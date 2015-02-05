@@ -1,0 +1,22 @@
+. $topsrcdir/build/macosx/universal/mozconfig 
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../opt-oaks-debug-@CONFIG_GUESS@
+
+ac_add_options --enable-application=kiosk
+ac_add_options --disable-tests
+ac_add_options --enable-official-branding
+
+# enable debug
+ac_add_options --enable-debug
+
+export MOZ_DEBUG_SYMBOLS=1 
+export CFLAGS="-gdwarf-2"
+export CXXFLAGS="-gdwarf-2"
+
+# Treat warnings as errors in directories with FAIL_ON_WARNINGS.
+# ac_add_options --enable-warnings-as-errors
+
+export MOZILLA_OFFICIAL=1
+export MOZ_PACKAGE_JSSHELL=1
+export BUILDING_RELEASE=1
+

@@ -1,0 +1,28 @@
+# This file specifies the build flags for Open Kiosk. 
+
+# for redistribution
+WIN32_REDIST_DIR=$topsrcdir\\kiosk\\redist\\x86
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../opt-oaks-@CONFIG_GUESS@
+
+ac_add_options --enable-application=kiosk
+
+mk_add_options MOZ_PGO=1
+
+export BUILDING_RELEASE=1
+
+# ac_add_options --disable-tests
+# ac_add_options --disable-crashreporter
+# ac_add_options --disable-optimize
+
+ac_add_options --enable-crashreporter
+ac_add_options --enable-optimize
+
+ac_add_options --enable-release 
+ac_add_options --enable-update-channel=release 
+ac_add_options --enable-update-packaging 
+ac_add_options --enable-jemalloc 
+ac_add_options --enable-warnings-as-errors 
+ac_add_options --enable-official-branding
+
+

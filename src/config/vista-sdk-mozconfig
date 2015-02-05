@@ -1,0 +1,10 @@
+# Use the Windows Vista SDK
+export INCLUDE="c:/Program Files/Microsoft SDKs/Windows/v6.0/include;c:/Program Files/Microsoft SDKs/Windows/v6.0/include/atl;c:/Program Files/Microsoft Visual Studio 8/VC/ATLMFC/INCLUDE;c:/Program Files/Microsoft Visual Studio 8/VC/INCLUDE;c:/Program Files/Microsoft Visual Studio 8/VC/PlatformSDK/include;"
+export LIB="c:/Program Files/Microsoft SDKs/Windows/v6.0/lib;c:/Program Files/Microsoft Visual Studio 8/VC/ATLMFC/LIB;c:/Program Files/Microsoft Visual Studio 8/VC/LIB;c:/Program Files/Microsoft Visual Studio 8/VC/PlatformSDK/lib;c:/Program Files/Microsoft Visual Studio 8/SDK/v2.0/lib;c:/work/mozilla-build/atlthunk_compat"
+export PATH="/c/Program Files/Microsoft SDKs/Windows/v6.0/bin:$PATH"
+export SDKDIR="c:/Program Files/Microsoft SDKs/Windows/v6.0"
+echo "Using the Windows Vista SDK, real INCLUDE, LIB, PATH and SDKDIR are below"
+echo "INCLUDE: $INCLUDE"
+echo "LIB: $LIB"
+echo "PATH: $PATH"
+echo "SDKDIR: $SDKDIR"

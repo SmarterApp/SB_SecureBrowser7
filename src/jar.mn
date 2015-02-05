@@ -1,0 +1,10 @@
+kiosk.jar:
+%  content bmakiosk %content/ contentaccessible=yes
+
+* content/bmakiosk.xul                  (content/bmakiosk.xul)
+* content/hiddenWindow.xul              (content/hiddenWindow.xul)
+* content/baseMenuOverlay.xul           (content/baseMenuOverlay.xul)
+* content/js/openkiosk.js               (content/js/openkiosk.js)
+  content/js/utils.js                   (content/js/utils.js)
+* content/js/securebrowser.js           (content/js/securebrowser.js)
+

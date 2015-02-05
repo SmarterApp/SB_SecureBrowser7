@@ -1,0 +1,21 @@
+XPIDL_SOURCES += [ 'mozISecureBrowser.idl', ]
+
+XPIDL_MODULE = 'sbruntime'
+
+UNIFIED_SOURCES += [ 'mozSecureBrowserModule.cpp', ]
+
+if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'cocoa': 
+  UNIFIED_SOURCES += [ 'mozSecureBrowserOSX.mm', ]
+
+if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'windows': 
+  UNIFIED_SOURCES += [ 'mozSecureBrowserWin.cpp', ]
+
+
+LIBRARY_NAME = 'sbruntime'
+
+IS_COMPONENT = True
+
+FORCE_SHARED_LIB = True
+
+LIBRARY_NAME = 'sbruntime'
+

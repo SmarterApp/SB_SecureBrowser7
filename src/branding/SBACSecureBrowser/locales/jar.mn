@@ -1,0 +1,7 @@
+#filter substitution
+
+en-US.jar:
+% locale branding en-US %locale/branding/
+* locale/branding/brand.dtd        (en-US/brand.dtd)
+* locale/branding/brand.properties (en-US/brand.properties)
+* locale/branding/browserconfig.properties (browserconfig.properties)

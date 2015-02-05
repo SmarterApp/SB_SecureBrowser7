@@ -1,0 +1,13 @@
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../opt-non-universal-debug-@CONFIG_GUESS@
+
+mk_add_options MOZ_CO_PROJECT=browser
+
+ac_add_options  --enable-application=kiosk
+
+ac_add_options --disable-tests
+ac_add_options --enable-prebinding
+
+# enable debug
+ac_add_options --enable-debug
+
+

@@ -1,0 +1,121 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+DATE_STAMP=`date +"%Y-%m-%d"`
+
+include $(topsrcdir)/config/rules.mk
+
+run:
+ifeq ($(OS_ARCH),Linux)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) $(url);
+else 
+ifeq ($(OS_ARCH),WINNT)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) $(url);
+else
+	@$(DIST)/./$(MOZ_APP_NAME).app/Contents/MacOS/./$(MOZ_APP_NAME) $(url);
+endif
+endif
+
+run-toolbar:
+ifeq ($(OS_ARCH),Linux)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -options toolbar $(url);
+endif
+ifeq ($(OS_ARCH),WINNT)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -options toolbar $(url);
+endif
+ifeq ($(OS_ARCH),Darwin)
+	@cd $(DIST)/; ./$(MOZ_APP_NAME).app/Contents/MacOS/./$(MOZ_APP_NAME) -options toolbar $(url);
+endif
+
+run-debug:
+ifeq ($(OS_ARCH),Linux)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -options debug $(url);
+endif
+ifeq ($(OS_ARCH),WINNT)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -options debug $(url);
+endif
+ifeq ($(OS_ARCH),Darwin)
+	@cd $(DIST)/; ./$(MOZ_APP_NAME).app/Contents/MacOS/./$(MOZ_APP_NAME) -options debug $(url);
+endif
+
+run-browser:
+ifeq ($(OS_ARCH),Linux)
+        @cd $(DIST)/bin; ./$(MOZ_APP_NAME) -P -chrome chrome://browser/content/ $(url);
+else
+ifeq ($(OS_ARCH),WINNT)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -chrome chrome://browser/content/ $(url);
+else
+	@cd $(DIST)/; ./$(MOZ_APP_NAME).app/Contents/MacOS/./$(MOZ_APP_NAME) -chrome chrome://browser/content/ $(url);
+endif
+endif
+
+run-proxy:
+ifeq ($(OS_ARCH),Linux)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -options proxy -P;
+endif
+ifeq ($(OS_ARCH),WINNT)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -options proxy;
+else
+	@cd $(DIST)/; ./$(MOZ_APP_NAME).app/Contents/MacOS/./$(MOZ_APP_NAME) -options proxy;
+endif
+
+run-cache:
+ifeq ($(OS_ARCH),Linux)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -options cache -P;
+endif
+ifeq ($(OS_ARCH),WINNT)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -options cache;
+else
+	@cd $(DIST)/; ./$(MOZ_APP_NAME).app/Contents/MacOS/./$(MOZ_APP_NAME) -options cache;
+endif
+run-prefs:
+ifeq ($(OS_ARCH),Linux)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -Preferences -P;
+endif
+ifeq ($(OS_ARCH),WINNT)
+	@cd $(DIST)/bin; ./$(MOZ_APP_NAME) -Preferences;
+else
+	@cd $(DIST)/; ./$(MOZ_APP_NAME).app/Contents/MacOS/./$(MOZ_APP_NAME) -Preferences
+endif
+
+build-branding:
+	@$(MAKE) -C branding/$(MOZ_APP_BASENAME);
+
+distro:
+	rm -rf $(DIST)/*.dmg;
+	$(MAKE) -C installer;
+ifeq ($(OS_ARCH),Darwin)
+	mv $(DIST)/$(MOZ_APP_NAME)-$(MOZ_APP_VERSION).en-US.mac.dmg $(DIST)/$(MOZ_APP_NAME)-$(PROXY_DISTRO)$(DATE_STAMP).dmg
+	rm -f ~/Desktop/$(MOZ_APP_NAME)*.dmg;
+	cp $(DIST)/$(MOZ_APP_NAME)-$(PROXY_DISTRO)$(DATE_STAMP).dmg ~/Desktop/
+endif
+
+msi: distro msi-internal
+
+msi-internal:
+ifeq ($(OS_ARCH),WINNT)
+	$(MAKE) -C installer/windows/msi msi-installer;
+
+# sign-msi:
+# 	@echo signing MSI ...; \
+#	cp $(DIST)/$(MOZ_APP_NAME)-$(DATE_STAMP).msi $(srcdir)/sign; \
+# 	cd $(srcdir)/sign;            \
+# 	cmd /c "signtool sign /f air.pfx /p @irP@552014! $(MOZ_APP_NAME)-$(DATE_STAMP).msi";
+# 	mv $(srcdir)/sign/$(MOZ_APP_NAME)-$(DATE_STAMP).msi $(DIST);
+# 	cp $(DIST)/$(MOZ_APP_NAME)-$(DATE_STAMP).msi ~/Desktop;
+
+endif
+
+ifeq ($(OS_ARCH),Darwin)
+dmg: sign-package distro sign-dmg
+
+#sign-package:
+#	@echo signing .app Package ...; \
+#	codesign -s "American Institutes for Research in the Behavioral Sciences" --resource-rules $(DIST)/$(MOZ_APP_NAME).app/Contents/_CodeSignature/CodeResources $(DIST)/universal/$(MOZ_APP_NAME)/$(MOZ_APP_NAME).app;
+
+#sign-dmg:
+#	@echo signing DMG ...; \
+#	cd ~/Desktop; \
+#	codesign -s "American Institutes for Research in the Behavioral Sciences" $(MOZ_APP_NAME)-$(DATE_STAMP).dmg;
+endif

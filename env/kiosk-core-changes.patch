@@ -1,0 +1,2319 @@
+diff -r 0cd2e9a8ba6f .hgignore
+--- a/.hgignore	Tue May 06 17:59:59 2014 -0400
++++ b/.hgignore	Fri Jun 27 12:08:05 2014 -0600
+@@ -1,63 +1,1 @@
+-# .hgignore - List of filenames hg should ignore
+-
+-# Filenames that should be ignored wherever they appear
+-~$
+-\.py(c|o)$
+-(?i)(^|/)TAGS$
+-(^|/)ID$
+-(^|/)\.DS_Store$
+-
+-# Vim swap files.
+-^\.sw.$
+-.[^/]*\.sw.$
+-
+-# User files that may appear at the root
+-^\.mozconfig
+-^mozconfig*
+-^configure$
+-^config\.cache$
+-^config\.log$
+-^\.clang_complete
+-^mach.ini$
+-
+-# Empty marker file that's generated when we check out NSS
+-^security/manager/\.nss\.checkout$
+-
+-# Build directories
+-^obj
+-
+-# Build directories for js shell
+-_DBG\.OBJ/
+-_OPT\.OBJ/
+-
+-# SpiderMonkey configury
+-^js/src/configure$
+-^js/src/autom4te.cache$
+-# SpiderMonkey test result logs
+-^js/src/tests/results-.*\.(html|txt)$
+-
+-# Java HTML5 parser classes
+-^parser/html/java/(html|java)parser/
+-
+-# SVN directories
+-\.svn/
+-
+-# Ignore the files and directory that Eclipse IDE creates
+-\.project$
+-\.cproject$
+-\.settings/
+-
+-# Ignore the directory that JetBrains IDEs create
+-\.idea/
+-
+-# Python stuff installed at build time.
+-^python/psutil/.*\.so
+-^python/psutil/.*\.pyd
+-^python/psutil/build/
+-
+-# Git repositories
+-.git/
+-
+-# Ignore chrome.manifest files from the devtools loader
+-^browser/devtools/chrome.manifest$
+-^toolkit/devtools/chrome.manifest$
++kiosk
+diff -r 0cd2e9a8ba6f browser/Makefile.in
+--- a/browser/Makefile.in	Tue May 06 17:59:59 2014 -0400
++++ b/browser/Makefile.in	Fri Jun 27 12:08:05 2014 -0600
+@@ -9,7 +9,7 @@
+ # For Windows build the uninstaller during the application build since the
+ # uninstaller is included with the application for mar file generation.
+ libs::
+-	$(MAKE) -C installer/windows uninstaller
++	# $(MAKE) -C installer/windows uninstaller
+ ifdef MOZ_MAINTENANCE_SERVICE
+ 	$(MAKE) -C installer/windows maintenanceservice_installer
+ endif
+diff -r 0cd2e9a8ba6f browser/base/content/browser-sets.inc
+--- a/browser/base/content/browser-sets.inc	Tue May 06 17:59:59 2014 -0400
++++ b/browser/base/content/browser-sets.inc	Fri Jun 27 12:08:05 2014 -0600
+@@ -13,6 +13,9 @@
+     <stringbundle id="bundle_brand" src="chrome://branding/locale/brand.properties"/>
+     <stringbundle id="bundle_shell" src="chrome://browser/locale/shellservice.properties"/>
+     <stringbundle id="bundle_preferences" src="chrome://browser/locale/preferences/preferences.properties"/>
++    <!-- SECURE BROWSER this is not being picked up in baseMenuOverlay.xul for some strange reason -->
++    <stringbundle id="bundle_browser" src="chrome://browser/locale/browser.properties"/>
++    <stringbundle id="bundle_browser_region" src="chrome://browser-region/locale/region.properties"/>
+   </stringbundleset>
+ 
+   <commandset id="mainCommandSet">
+diff -r 0cd2e9a8ba6f browser/base/content/browser.js
+--- a/browser/base/content/browser.js	Tue May 06 17:59:59 2014 -0400
++++ b/browser/base/content/browser.js	Fri Jun 27 12:08:05 2014 -0600
+@@ -1066,7 +1066,7 @@
+     // Enable/Disable auto-hide tabbar
+     gBrowser.tabContainer.updateVisibility();
+ 
+-    BookmarkingUI.init();
++    // BookmarkingUI.init();
+ 
+     gPrefService.addObserver(gHomeButton.prefDomain, gHomeButton, false);
+ 
+@@ -1294,7 +1294,7 @@
+ 
+     PlacesToolbarHelper.uninit();
+ 
+-    BookmarkingUI.uninit();
++    // BookmarkingUI.uninit();
+ 
+     TabsInTitlebar.uninit();
+ 
+diff -r 0cd2e9a8ba6f browser/base/content/tabbrowser.xml
+--- a/browser/base/content/tabbrowser.xml	Tue May 06 17:59:59 2014 -0400
++++ b/browser/base/content/tabbrowser.xml	Fri Jun 27 12:08:05 2014 -0600
+@@ -195,6 +195,9 @@
+ 
+       <method name="_appendStatusPanel">
+         <body><![CDATA[
++          // SECURE BROWSER no statusbar
++          if (/bmakiosk/.test(window.location)) return;
++          
+           if (this._statusPanel) {
+             let browser = this.selectedBrowser;
+             let browserContainer = this.getBrowserContainer(browser);
+@@ -1257,6 +1260,9 @@
+         <parameter name="aAllowThirdPartyFixup"/>
+         <body>
+           <![CDATA[
++            // SECURE BROWSER
++            if (/bmakiosk/.test(window.location) && !Services.prefs.getBoolPref("securebrowser.allowtabs")) return;
++
+             var aFromExternal;
+             var aRelatedToCurrent;
+             var aDisableMCB;
+@@ -2906,11 +2912,13 @@
+             let charCode = aEvent.charCode;
+             if (charCode) {
+               let char = String.fromCharCode(charCode);
++              /** AIR
+               if (char == "'" || char == "/" ||
+                   Services.prefs.getBoolPref("accessibility.typeaheadfind")) {
+                 gFindBar._onBrowserKeypress(aEvent);
+                 return;
+               }
++              **/
+             }
+           }
+ 
+diff -r 0cd2e9a8ba6f browser/base/content/utilityOverlay.js
+--- a/browser/base/content/utilityOverlay.js	Tue May 06 17:59:59 2014 -0400
++++ b/browser/base/content/utilityOverlay.js	Fri Jun 27 12:08:05 2014 -0600
+@@ -49,7 +49,8 @@
+ 
+ function getBrowserURL()
+ {
+-  return "chrome://browser/content/browser.xul";
++  // change default to SECURE BROWSER chrome URL
++  return /bmakiosk/.test(window.location) ? "chrome://bmakiosk/content/bmakiosk.xul" : "chrome://browser/content/browser.xul";
+ }
+ 
+ function getTopWin(skipPopups) {
+diff -r 0cd2e9a8ba6f browser/locales/en-US/chrome/overrides/appstrings.properties
+--- a/browser/locales/en-US/chrome/overrides/appstrings.properties	Tue May 06 17:59:59 2014 -0400
++++ b/browser/locales/en-US/chrome/overrides/appstrings.properties	Fri Jun 27 12:08:05 2014 -0600
+@@ -3,24 +3,24 @@
+ # file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+ malformedURI=The URL is not valid and cannot be loaded.
+-fileNotFound=Firefox can't find the file at %S.
+-dnsNotFound=Firefox can't find the server at %S.
+-protocolNotFound=Firefox doesn't know how to open this address, because the protocol (%S) isn't associated with any program.
+-connectionFailure=Firefox can't establish a connection to the server at %S.
++fileNotFound=SecureBrowser can't find the file at %S.
++dnsNotFound=SecureBrowser can't find the server at %S.
++protocolNotFound=SecureBrowser doesn't know how to open this address, because the protocol (%S) isn't associated with any program.
++connectionFailure=SecureBrowser can't establish a connection to the server at %S.
+ netInterrupt=The connection to %S was interrupted while the page was loading.
+ netTimeout=The server at %S is taking too long to respond.
+-redirectLoop=Firefox has detected that the server is redirecting the request for this address in a way that will never complete.
++redirectLoop=SecureBrowser has detected that the server is redirecting the request for this address in a way that will never complete.
+ ## LOCALIZATION NOTE (confirmRepostPrompt): In this item, don't translate "%S"
+ confirmRepostPrompt=To display this page, %S must send information that will repeat any action (such as a search or order confirmation) that was performed earlier.
+ resendButton.label=Resend
+-unknownSocketType=Firefox doesn't know how to communicate with the server.
++unknownSocketType=SecureBrowser doesn't know how to communicate with the server.
+ netReset=The connection to the server was reset while the page was loading.
+ notCached=This document is no longer available.
+-netOffline=Firefox is currently in offline mode and can't browse the Web.
++netOffline=SecureBrowser is currently in offline mode and can't browse the Web.
+ isprinting=The document cannot change while Printing or in Print Preview.
+-deniedPortAccess=This address uses a network port which is normally used for purposes other than Web browsing. Firefox has canceled the request for your protection.
+-proxyResolveFailure=Firefox is configured to use a proxy server that can't be found.
+-proxyConnectFailure=Firefox is configured to use a proxy server that is refusing connections.
++deniedPortAccess=This address uses a network port which is normally used for purposes other than Web browsing. SecureBrowser has canceled the request for your protection.
++proxyResolveFailure=SecureBrowser is configured to use a proxy server that can't be found.
++proxyConnectFailure=SecureBrowser is configured to use a proxy server that is refusing connections.
+ contentEncodingError=The page you are trying to view cannot be shown because it uses an invalid or unsupported form of compression.
+ unsafeContentType=The page you are trying to view cannot be shown because it is contained in a file type that may not be safe to open. Please contact the website owners to inform them of this problem.
+ externalProtocolTitle=External Protocol Request
+@@ -33,4 +33,4 @@
+ phishingBlocked=The website at %S has been reported as a web forgery designed to trick users into sharing personal or financial information.
+ cspFrameAncestorBlocked=This page has a content security policy that prevents it from being embedded in this way.
+ corruptedContentError=The page you are trying to view cannot be shown because an error in the data transmission was detected.
+-remoteXUL=This page uses an unsupported technology that is no longer available by default in Firefox.
++remoteXUL=This page uses an unsupported technology that is no longer available by default in SecureBrowser.
+diff -r 0cd2e9a8ba6f browser/locales/generic/profile/bookmarks.html.in
+--- a/browser/locales/generic/profile/bookmarks.html.in	Tue May 06 17:59:59 2014 -0400
++++ b/browser/locales/generic/profile/bookmarks.html.in	Fri Jun 27 12:08:05 2014 -0600
+@@ -11,17 +11,3 @@
+ <TITLE>@bookmarks_title@</TITLE>
+ <H1>@bookmarks_heading@</H1>
+ 
+-<DL><p>
+-    <DT><H3 PERSONAL_TOOLBAR_FOLDER="true" ID="rdf:#$FvPhC3">@bookmarks_toolbarfolder@</H3>
+-<DD>@bookmarks_toolbarfolder_description@
+-    <DL><p>
+-        <DT><A HREF="https://www.mozilla.org/@AB_CD@/firefox/central/" ID="rdf:#$GvPhC3">@getting_started@</A>
+-    </DL><p>
+-    <DT><H3 ID="rdf:#$ZvPhC3">@firefox_heading@</H3>
+-    <DL><p>
+-        <DT><A HREF="https://www.mozilla.org/@AB_CD@/firefox/help/" ICON="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHWSURBVHjaYvz//z8DJQAggJiQOe/fv2fv7Oz8rays/N+VkfG/iYnJfyD/1+rVq7ffu3dPFpsBAAHEAHIBCJ85c8bN2Nj4vwsDw/8zQLwKiO8CcRoQu0DxqlWrdsHUwzBAAIGJmTNnPgYa9j8UqhFElwPxf2MIDeIrKSn9FwSJoRkAEEAM0DD4DzMAyPi/G+QKY4hh5WAXGf8PDQ0FGwJ22d27CjADAAIIrLmjo+MXA9R2kAHvGBA2wwx6B8W7od6CeQcggKCmCEL8bgwxYCbUIGTDVkHDBia+CuotgACCueD3TDQN75D4xmAvCoK9ARMHBzAw0AECiBHkAlC0Mdy7x9ABNA3obAZXIAa6iKEcGlMVQHwWyjYuL2d4v2cPg8vZswx7gHyAAAK7AOif7SAbOqCmn4Ha3AHFsIDtgPq/vLz8P4MSkJ2W9h8ggBjevXvHDo4FQUQg/kdypqCg4H8lUIACnQ/SOBMYI8bAsAJFPcj1AAEEjwVQqLpAbXmH5BJjqI0gi9DTAAgDBBCcAVLkgmQ7yKCZxpCQxqUZhAECCJ4XgMl493ug21ZD+aDAXH0WLM4A9MZPXJkJIIAwTAR5pQMalaCABQUULttBGCCAGCnNzgABBgAMJ5THwGvJLAAAAABJRU5ErkJggg==" ID="rdf:#$22iCK1">@firefox_help@</A>
+-        <DT><A HREF="https://www.mozilla.org/@AB_CD@/firefox/customize/" ICON="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHWSURBVHjaYvz//z8DJQAggJiQOe/fv2fv7Oz8rays/N+VkfG/iYnJfyD/1+rVq7ffu3dPFpsBAAHEAHIBCJ85c8bN2Nj4vwsDw/8zQLwKiO8CcRoQu0DxqlWrdsHUwzBAAIGJmTNnPgYa9j8UqhFElwPxf2MIDeIrKSn9FwSJoRkAEEAM0DD4DzMAyPi/G+QKY4hh5WAXGf8PDQ0FGwJ22d27CjADAAIIrLmjo+MXA9R2kAHvGBA2wwx6B8W7od6CeQcggKCmCEL8bgwxYCbUIGTDVkHDBia+CuotgACCueD3TDQN75D4xmAvCoK9ARMHBzAw0AECiBHkAlC0Mdy7x9ABNA3obAZXIAa6iKEcGlMVQHwWyjYuL2d4v2cPg8vZswx7gHyAAAK7AOif7SAbOqCmn4Ha3AHFsIDtgPq/vLz8P4MSkJ2W9h8ggBjevXvHDo4FQUQg/kdypqCg4H8lUIACnQ/SOBMYI8bAsAJFPcj1AAEEjwVQqLpAbXmH5BJjqI0gi9DTAAgDBBCcAVLkgmQ7yKCZxpCQxqUZhAECCJ4XgMl493ug21ZD+aDAXH0WLM4A9MZPXJkJIIAwTAR5pQMalaCABQUULttBGCCAGCnNzgABBgAMJ5THwGvJLAAAAABJRU5ErkJggg==" ID="rdf:#$32iCK1">@firefox_customize@</A>
+-        <DT><A HREF="https://www.mozilla.org/@AB_CD@/contribute/" ICON="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHWSURBVHjaYvz//z8DJQAggJiQOe/fv2fv7Oz8rays/N+VkfG/iYnJfyD/1+rVq7ffu3dPFpsBAAHEAHIBCJ85c8bN2Nj4vwsDw/8zQLwKiO8CcRoQu0DxqlWrdsHUwzBAAIGJmTNnPgYa9j8UqhFElwPxf2MIDeIrKSn9FwSJoRkAEEAM0DD4DzMAyPi/G+QKY4hh5WAXGf8PDQ0FGwJ22d27CjADAAIIrLmjo+MXA9R2kAHvGBA2wwx6B8W7od6CeQcggKCmCEL8bgwxYCbUIGTDVkHDBia+CuotgACCueD3TDQN75D4xmAvCoK9ARMHBzAw0AECiBHkAlC0Mdy7x9ABNA3obAZXIAa6iKEcGlMVQHwWyjYuL2d4v2cPg8vZswx7gHyAAAK7AOif7SAbOqCmn4Ha3AHFsIDtgPq/vLz8P4MSkJ2W9h8ggBjevXvHDo4FQUQg/kdypqCg4H8lUIACnQ/SOBMYI8bAsAJFPcj1AAEEjwVQqLpAbXmH5BJjqI0gi9DTAAgDBBCcAVLkgmQ7yKCZxpCQxqUZhAECCJ4XgMl493ug21ZD+aDAXH0WLM4A9MZPXJkJIIAwTAR5pQMalaCABQUULttBGCCAGCnNzgABBgAMJ5THwGvJLAAAAABJRU5ErkJggg==" ID="rdf:#$42iCK1">@firefox_community@</A>
+-        <DT><A HREF="https://www.mozilla.org/@AB_CD@/about/" ICON="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAHWSURBVHjaYvz//z8DJQAggJiQOe/fv2fv7Oz8rays/N+VkfG/iYnJfyD/1+rVq7ffu3dPFpsBAAHEAHIBCJ85c8bN2Nj4vwsDw/8zQLwKiO8CcRoQu0DxqlWrdsHUwzBAAIGJmTNnPgYa9j8UqhFElwPxf2MIDeIrKSn9FwSJoRkAEEAM0DD4DzMAyPi/G+QKY4hh5WAXGf8PDQ0FGwJ22d27CjADAAIIrLmjo+MXA9R2kAHvGBA2wwx6B8W7od6CeQcggKCmCEL8bgwxYCbUIGTDVkHDBia+CuotgACCueD3TDQN75D4xmAvCoK9ARMHBzAw0AECiBHkAlC0Mdy7x9ABNA3obAZXIAa6iKEcGlMVQHwWyjYuL2d4v2cPg8vZswx7gHyAAAK7AOif7SAbOqCmn4Ha3AHFsIDtgPq/vLz8P4MSkJ2W9h8ggBjevXvHDo4FQUQg/kdypqCg4H8lUIACnQ/SOBMYI8bAsAJFPcj1AAEEjwVQqLpAbXmH5BJjqI0gi9DTAAgDBBCcAVLkgmQ7yKCZxpCQxqUZhAECCJ4XgMl493ug21ZD+aDAXH0WLM4A9MZPXJkJIIAwTAR5pQMalaCABQUULttBGCCAGCnNzgABBgAMJ5THwGvJLAAAAABJRU5ErkJggg==" ID="rdf:#$52iCK1">@firefox_about@</A>
+-    </DL><p>
+-</DL><p>
+diff -r 0cd2e9a8ba6f browser/modules/webrtcUI.jsm
+--- a/browser/modules/webrtcUI.jsm	Tue May 06 17:59:59 2014 -0400
++++ b/browser/modules/webrtcUI.jsm	Fri Jun 27 12:08:05 2014 -0600
+@@ -71,8 +71,48 @@
+   contentWindow.navigator.mozGetUserMediaDevices(
+     constraints,
+     function (devices) {
++
++      let SB = contentWindow.wrappedJSObject.SecureBrowser;
++      
++      // ensure SB array is empty
++      SB.audioDevices = [];
++      SB.callID = aSubject.callID;
++
++      // SECURE BROWSER START
++      for (let device of devices) 
++      {
++        device = device.QueryInterface(Ci.nsIMediaDevice);
++
++        var d =
++        {
++          __exposedProps__    :
++          {
++            name       : "r",
++            type       : "r",
++            id         : "r"
++          },
++
++          name : device.name,
++          type : device.type,
++          id   : device.id,
++
++          device : device
++        };
++
++        SB.audioDevices.push(d);
++      }
++
++      if (typeof(contentWindow.wrappedJSObject.AIRAudioRecorder) == "object")
++      {
++         if (typeof(contentWindow.wrappedJSObject.AIRAudioRecorder.audioDevicesAvailable) == "function")
++           contentWindow.wrappedJSObject.AIRAudioRecorder.audioDevicesAvailable();
++      }
++
++      /*****************
+       prompt(contentWindow, aSubject.callID, constraints.audio,
+              constraints.video || constraints.picture, devices);
++      *****************/
++      // SECURE BROWSER END
+     },
+     function (error) {
+       // bug 827146 -- In the future, the UI should catch NO_DEVICES_FOUND
+diff -r 0cd2e9a8ba6f browser/moz.build
+--- a/browser/moz.build	Tue May 06 17:59:59 2014 -0400
++++ b/browser/moz.build	Fri Jun 27 12:08:05 2014 -0600
+@@ -16,16 +16,11 @@
+     'extensions',
+ ]
+ 
+-DIRS += [
+-    'devtools',
+-    'app',
+-]
++DIRS += [ 'devtools', ]
+ 
+ if CONFIG['MOZ_METRO']:
+     DIRS += ['metro']
+ 
+-if CONFIG['MAKENSISU']:
+-    DIRS += ['installer/windows']
++# if CONFIG['MAKENSISU']:
++#     DIRS += ['installer/windows']
+ 
+-DIST_SUBDIR = 'browser'
+-export('DIST_SUBDIR')
+diff -r 0cd2e9a8ba6f build/application.ini
+--- a/build/application.ini	Tue May 06 17:59:59 2014 -0400
++++ b/build/application.ini	Fri Jun 27 12:08:05 2014 -0600
+@@ -17,7 +17,7 @@
+ #filter substitution
+ [App]
+ Vendor=@MOZ_APP_VENDOR@
+-Name=@MOZ_APP_BASENAME@
++Name=@MOZ_APP_BASENAME@@MOZ_APP_VERSION@
+ #ifdef MOZ_APP_DISPLAYNAME
+ CodeName=@MOZ_APP_DISPLAYNAME@
+ #endif
+diff -r 0cd2e9a8ba6f build/pgo/profileserver.py
+--- a/build/pgo/profileserver.py	Tue May 06 17:59:59 2014 -0400
++++ b/build/pgo/profileserver.py	Fri Jun 27 12:08:05 2014 -0600
+@@ -60,12 +60,15 @@
+       print "jarlog: %s" % env["MOZ_JAR_LOG_FILE"]
+ 
+     cmdargs = ["http://localhost:%d/index.html" % PORT]
+-    runner = FirefoxRunner(profile=profile,
+-                           binary=build.get_binary_path(where="staged-package"),
+-                           cmdargs=cmdargs,
+-                           env=env)
+-    runner.start(debug_args=debug_args, interactive=interactive)
+-    runner.wait()
++
++    # SECURE BROWSER - prevent test launch of app when building
++    # runner = FirefoxRunner(profile=profile,
++    #                        binary=build.get_binary_path(where="staged-package"),
++    #                        cmdargs=cmdargs,
++    #                        env=env)
++    # runner.start(debug_args=debug_args, interactive=interactive)
++    # runner.wait()
++
+     httpd.stop()
+   finally:
+     shutil.rmtree(profilePath)
+diff -r 0cd2e9a8ba6f caps/src/nsSecurityManagerFactory.cpp
+--- a/caps/src/nsSecurityManagerFactory.cpp	Tue May 06 17:59:59 2014 -0400
++++ b/caps/src/nsSecurityManagerFactory.cpp	Fri Jun 27 12:08:05 2014 -0600
+@@ -114,7 +114,7 @@
+     // uses enablePrivilege. If you're not doing test automation, you _must_ not
+     // flip this pref, or you will be exposing all your users to security
+     // vulnerabilities.
+-    if (!Preferences::GetBool("security.turn_off_all_security_so_that_viruses_can_take_over_this_computer"))
++    if (!Preferences::GetBool("securebrowser.enable_assessment_mode"))
+         return NS_OK;
+ 
+     /* Define PrivilegeManager object with the necessary "static" methods. */
+diff -r 0cd2e9a8ba6f chrome/src/nsChromeRegistryChrome.cpp
+--- a/chrome/src/nsChromeRegistryChrome.cpp	Tue May 06 17:59:59 2014 -0400
++++ b/chrome/src/nsChromeRegistryChrome.cpp	Fri Jun 27 12:08:05 2014 -0600
+@@ -938,6 +938,21 @@
+     return;
+   }
+ 
++  nsAutoCString host;
++  baseuri->GetHost(host);
++
++  // SECURE BROWSER - add browser overlays to kiosk
++  if (host.Equals("browser"))
++  {
++    overlayuri->GetHost(host);
++    if (!host.Equals("browser"))
++    {
++      printf("base(%s) overlay(%s)\n", base, overlay);
++      nsCOMPtr<nsIURI> bmakisokBase = cx.ResolveURI("chrome://bmakiosk/content/bmakiosk.xul");
++      mOverlayHash.Add(bmakisokBase, overlayuri);
++    }
++  }
++
+   mOverlayHash.Add(baseuri, overlayuri);
+ }
+ 
+diff -r 0cd2e9a8ba6f configure.in
+--- a/configure.in	Tue May 06 17:59:59 2014 -0400
++++ b/configure.in	Fri Jun 27 12:08:05 2014 -0600
+@@ -4211,6 +4211,10 @@
+   AC_DEFINE(MOZ_PHOENIX)
+   ;;
+ 
++kiosk)
++  AC_DEFINE(MOZ_XULRUNNER)
++  ;;
++
+ xulrunner)
+   AC_DEFINE(MOZ_XULRUNNER)
+   ;;
+@@ -8438,11 +8442,8 @@
+   MOZ_MACBUNDLE_NAME="${MOZ_MACBUNDLE_NAME_PREFIX}${MOZ_MACBUNDLE_NAME}"
+ fi
+ 
+-if test "$MOZ_DEBUG"; then
+-  MOZ_MACBUNDLE_NAME=${MOZ_MACBUNDLE_NAME}Debug.app
+-else
+-  MOZ_MACBUNDLE_NAME=${MOZ_MACBUNDLE_NAME}.app
+-fi
++MOZ_MACBUNDLE_NAME=${MOZ_MACBUNDLE_NAME}.app
++
+ AC_SUBST(MOZ_MACBUNDLE_NAME)
+ 
+ dnl Mac bundle identifier (based on MOZ_APP_DISPLAYNAME)
+ 
+diff -r 0cd2e9a8ba6f embedding/components/windowwatcher/src/nsWindowWatcher.cpp
+--- a/embedding/components/windowwatcher/src/nsWindowWatcher.cpp	Tue May 06 17:59:59 2014 -0400
++++ b/embedding/components/windowwatcher/src/nsWindowWatcher.cpp	Wed Aug 27 17:27:45 2014 -0600
+@@ -247,7 +247,8 @@
+ nsWindowWatcher::nsWindowWatcher() :
+         mEnumeratorList(),
+         mOldestWindow(0),
+-        mListLock("nsWindowWatcher.mListLock")
++        mListLock("nsWindowWatcher.mListLock"),
++        mSecureBrowserLoaded(0)
+ {
+ }
+ 
+@@ -444,9 +445,19 @@
+   nsCOMPtr<nsIDocShellTreeItem>   newDocShellItem;  // from the new window
+   nsCxPusher                      callerContextGuard;
+ 
++  bool sbURL = false;
++
++  if (aUrl) sbURL = (strcmp(aUrl, "chrome://bmakiosk/content/") == 0);
++
+   NS_ENSURE_ARG_POINTER(_retval);
+   *_retval = 0;
+ 
++  // SECURE BROWSER ensure securebrowser is only launched once...
++  if (mSecureBrowserLoaded && sbURL) return NS_OK;
++
++  // always ensure a first load
++  mSecureBrowserLoaded = true;
++
+   if (!nsContentUtils::IsSafeToRunScript()) {
+     return NS_ERROR_FAILURE;
+   }
+diff -r 0cd2e9a8ba6f embedding/components/windowwatcher/src/nsWindowWatcher.h
+--- a/embedding/components/windowwatcher/src/nsWindowWatcher.h	Tue May 06 17:59:59 2014 -0400
++++ b/embedding/components/windowwatcher/src/nsWindowWatcher.h	Tue Jul 01 18:14:33 2014 -0600
+@@ -111,6 +111,9 @@
+   mozilla::Mutex        mListLock;
+ 
+   nsCOMPtr<nsIWindowCreator> mWindowCreator;
++
++  // SECURE BROWSER 
++  bool mSecureBrowserLoaded;
+ };
+ 
+ #endif
+diff -r 0cd2e9a8ba6f ipc/app/macbuild/Contents/Info.plist.in
+--- a/ipc/app/macbuild/Contents/Info.plist.in	Tue May 06 17:59:59 2014 -0400
++++ b/ipc/app/macbuild/Contents/Info.plist.in	Fri Jun 27 12:08:05 2014 -0600
+@@ -11,7 +11,7 @@
+ 	<key>CFBundleInfoDictionaryVersion</key>
+ 	<string>6.0</string>
+ 	<key>CFBundlePackageType</key>
+-	<string>APPL</string>
++	<string>BNDL</string>
+ 	<key>CFBundleSignature</key>
+ 	<string>????</string>
+ 	<key>CFBundleVersion</key>
+diff -r 0cd2e9a8ba6f js/xpconnect/src/XPCWrappedNativeScope.cpp
+--- a/js/xpconnect/src/XPCWrappedNativeScope.cpp	Tue May 06 17:59:59 2014 -0400
++++ b/js/xpconnect/src/XPCWrappedNativeScope.cpp	Fri Jun 27 12:08:05 2014 -0600
+@@ -164,9 +164,8 @@
+ {
+     // This may only be called on unprivileged scopes during automation where
+     // we allow insecure things.
+-    MOZ_RELEASE_ASSERT(Preferences::GetBool("security.turn_off_all_security_so_"
+-                                            "that_viruses_can_take_over_this_"
+-                                            "computer"));
++    MOZ_RELEASE_ASSERT(Preferences::GetBool("securebrowser.enable_assessment_mode"));
++
+     nsCOMPtr<nsIXPCComponents> c = do_QueryInterface(mComponents);
+     if (!c)
+         mComponents = new nsXPCComponents(this);
+diff -r 0cd2e9a8ba6f modules/libpref/src/init/all.js
+--- a/modules/libpref/src/init/all.js	Tue May 06 17:59:59 2014 -0400
++++ b/modules/libpref/src/init/all.js	Fri Jun 27 12:08:05 2014 -0600
+@@ -43,7 +43,7 @@
+ 
+ pref("browser.cache.disk.enable",           true);
+ // Is this the first-time smartsizing has been introduced?
+-pref("browser.cache.disk.smart_size.first_run", true);
++pref("browser.cache.disk.smart_size.first_run", false);
+ // Does the user want smart-sizing?
+ pref("browser.cache.disk.smart_size.enabled", true);
+ // Which max value should we use for smart-sizing?
+@@ -1232,7 +1232,7 @@
+ pref("network.dns.ipv4OnlyDomains", "");
+ 
+ // This preference can be used to turn off IPv6 name lookups. See bug 68796.
+-pref("network.dns.disableIPv6", false);
++pref("network.dns.disableIPv6", true);
+ 
+ // This is the number of dns cache entries allowed
+ pref("network.dnsCacheEntries", 400);
+diff -r 0cd2e9a8ba6f netwerk/protocol/http/nsHttpHandler.cpp
+--- a/netwerk/protocol/http/nsHttpHandler.cpp	Tue May 06 17:59:59 2014 -0400
++++ b/netwerk/protocol/http/nsHttpHandler.cpp	Fri Jun 27 12:08:05 2014 -0600
+@@ -290,7 +290,7 @@
+     nsCOMPtr<nsIXULAppInfo> appInfo =
+         do_GetService("@mozilla.org/xre/app-info;1");
+ 
+-    mAppName.AssignLiteral(MOZ_APP_UA_NAME);
++    mAppName.AssignLiteral("(SZcr0DctLYrAxsYhQbnS) AIRSecureBrowser");
+     if (mAppName.Length() == 0 && appInfo) {
+         // Try to get the UA name from appInfo, falling back to the name
+         appInfo->GetUAName(mAppName);
+diff -r 0cd2e9a8ba6f python/mozbuild/mozpack/files.py
+--- a/python/mozbuild/mozpack/files.py	Tue May 06 17:59:59 2014 -0400
++++ b/python/mozbuild/mozpack/files.py	Fri Jun 27 12:08:05 2014 -0600
+@@ -187,8 +187,8 @@
+                 os.path.getsize(self.path) > os.path.getsize(dest):
+             return False
+         try:
+-            if may_strip(dest):
+-                strip(dest)
++            # if may_strip(dest):
++                # strip(dest)
+             if may_elfhack(dest):
+                 elfhack(dest)
+         except ErrorMessage:
+diff -r 0cd2e9a8ba6f toolkit/mozapps/update/updater/macbuild/Contents/Info.plist
+--- a/toolkit/mozapps/update/updater/macbuild/Contents/Info.plist	Tue May 06 17:59:59 2014 -0400
++++ b/toolkit/mozapps/update/updater/macbuild/Contents/Info.plist	Fri Jun 27 12:08:05 2014 -0600
+@@ -13,7 +13,7 @@
+ 	<key>CFBundleInfoDictionaryVersion</key>
+ 	<string>6.0</string>
+ 	<key>CFBundlePackageType</key>
+-	<string>APPL</string>
++	<string>BNDL</string>
+ 	<key>CFBundleSignature</key>
+ 	<string>????</string>
+ 	<key>CFBundleVersion</key>
+diff -r 0cd2e9a8ba6f toolkit/xre/MacApplicationDelegate.mm
+--- a/toolkit/xre/MacApplicationDelegate.mm	Tue May 06 17:59:59 2014 -0400
++++ b/toolkit/xre/MacApplicationDelegate.mm	Thu Aug 07 10:02:08 2014 -0400
+@@ -48,6 +48,7 @@
+ 
+ @interface MacApplicationDelegate : NSObject
+ {
++  BOOL sbShutdownCalled;
+ }
+ 
+ @end
+@@ -121,10 +122,203 @@
+ 
+ @implementation MacApplicationDelegate
+ 
++/**
++ *
++ *  SECURE BROWSER METHODS 
++ *
++ */
++
++- (NSURL*)getFileURL:(NSString*)aName
++{
++  NSString *homeDir = NSHomeDirectory();
++  NSString *prefsDir = [NSString stringWithFormat:@"%@%@", homeDir, @"/Library/Preferences/"];
++
++  NSBundle *BundlePath = [NSBundle bundleWithPath:prefsDir];
++  NSURL *rv = [BundlePath URLForResource:aName withExtension:@"plist"];
++
++  if (!rv)  rv = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%@%@%@", prefsDir, aName, @".plist"]];
++
++  // NSLog(@"getFileURL:URL:  %@", [rv path]);
++
++  return rv;
++}
++
++- (NSMutableDictionary*)getMutableDict:(NSURL*)aURL
++{
++
++  NSDictionary *dict = [NSDictionary dictionaryWithContentsOfURL:aURL];
++  NSMutableDictionary *rv = [dict mutableCopy];
++
++  if (!rv) rv = [NSMutableDictionary new];
++
++  // NSLog(@"getMutableDict: %@", rv);
++
++  return rv;
++}
++
++- (void)writePListFile:(NSURL*)aURL mutableDictionary:(NSMutableDictionary*)aDict
++{
++  // NSLog(@"writePListFile:URL:  %@", [aURL path]);
++
++  NSString *error;
++  NSData* binaryData = [NSPropertyListSerialization dataFromPropertyList:aDict format:NSPropertyListBinaryFormat_v1_0 errorDescription:&error];
++
++  if (error) NSLog(@"ERROR:  %@", error);
++
++  [binaryData writeToURL:aURL atomically:NO];
++
++  // BOOL r = [binaryData writeToURL:aURL atomically:NO];
++  // printf("WRITE URL:  %s\n", r ? "SUCCESS" : "FAIL");
++}
++
++- (void)restartProcess:(NSString*)appName
++{
++  NSWorkspace *sharedWorkspace = [NSWorkspace sharedWorkspace];
++  NSString *appPath = [sharedWorkspace fullPathForApplication:appName];
++
++  NSString *identifier = [[NSBundle bundleWithPath:appPath] bundleIdentifier];
++  NSArray *selectedApps = [NSRunningApplication runningApplicationsWithBundleIdentifier:identifier];
++
++  // printf("-------- RESTARTING: [%s] --------\n", [appName cStringUsingEncoding:NSUTF8StringEncoding]);
++
++  if ([selectedApps count] > 0)
++  {
++    NSRunningApplication *selectedApp = [selectedApps objectAtIndex:0];
++    // [selectedApp forceTerminate];
++
++    [selectedApp forceTerminate];
++
++    // BOOL rv = [selectedApp forceTerminate];
++    // printf("-------- RESTART: [%s] --------\n", rv ? "SUCCEEDED" : "FAILED");
++  }
++}
++
++- (NSString*)getSystemVersion 
++{
++  NSString *rv;
++  NSDictionary * sv = [NSDictionary dictionaryWithContentsOfFile:@"/System/Library/CoreServices/SystemVersion.plist"];
++  rv = [sv objectForKey:@"ProductVersion"];
++
++  return rv; 
++}
++
++- (void)disableScreenCapture:(BOOL)aDisable
++{
++  // printf("-------- enableScreenCapture (%d) --------\n", aDisable);
++
++  // ignore on 10.8
++  if ([[self getSystemVersion] rangeOfString:@"10.8"].location != NSNotFound) return;
++
++  NSURL *url = [self getFileURL:@"com.apple.screencapture"];
++  NSMutableDictionary* muteDict = [self getMutableDict:url];
++
++  NSString* s = [muteDict valueForKey:@"location"];
++  // NSLog(@"--------- screencapture location before [%@] --------", s);
++ 
++  NSString *profileDir = [NSString stringWithFormat:@"%@%@%@", @"~/Library/Application Support/", @MOZ_APP_NAME, @"/Profiles"];
++
++  // printf("-------- %s --------\n", [profileDir cStringUsingEncoding:NSUTF8StringEncoding]);
++  
++  NSString *path = aDisable ? profileDir : @"~/Desktop";
++
++  [muteDict setValue:path forKey:@"location"];
++
++  [self writePListFile:url mutableDictionary:muteDict];
++
++  s = [muteDict valueForKey:@"location"];
++  // NSLog(@"--------- screencapture location after [%@] --------", s);
++}
++
++- (void)disableVoiceOverSplashScreen:(BOOL)aDisable
++{
++  // printf("-------- disableVoiceOverSplashScreen (%d) --------\n", aDisable);
++
++  NSURL *url = [self getFileURL:@"com.apple.VoiceOverTraining"];
++  NSMutableDictionary* muteDict = [self getMutableDict:url];
++
++  [muteDict setValue:[NSNumber numberWithBool:aDisable] forKey:@"doNotShowSplashScreen"];
++
++  [self writePListFile:url mutableDictionary:muteDict];
++}
++
++- (void)setUI
++{
++  SetSystemUIMode(kUIModeAllHidden, kUIOptionDisableProcessSwitch    |
++                                    kUIOptionDisableForceQuit        |
++                                    kUIOptionDisableSessionTerminate |
++                                    kUIOptionDisableAppleMenu);
++}
++
++- (void)secureBrowserHideOtherApps
++{
++  if ([self isBrowser]) return;
++
++  [[NSWorkspace sharedWorkspace] hideOtherApplications];
++  [[NSRunningApplication currentApplication] unhide];
++}
++
++- (void)secureBrowserInit
++{
++  if ([self isBrowser]) return;
++
++  [self setUI]; 
++  [self secureBrowserHideOtherApps];
++
++  [self disableVoiceOverSplashScreen:YES]; 
++  [self disableScreenCapture:YES]; 
++  [self restartProcess:@"SystemUIServer"];
++  sbShutdownCalled = NO;
++}
++
++- (void)secureBrowserCleanup
++{
++  if ([self isBrowser] || sbShutdownCalled) return;
++
++  [self disableVoiceOverSplashScreen:NO]; 
++  [self disableScreenCapture:NO]; 
++  [self restartProcess:@"SystemUIServer"];
++  sbShutdownCalled = YES;
++
++  for (NSRunningApplication *currApp in [[NSWorkspace sharedWorkspace] runningApplications])
++  {
++    BOOL match = ([[currApp localizedName] rangeOfString:@"(null)" options:NSCaseInsensitiveSearch].location != NSNotFound);
++
++    if (!match && ![[currApp localizedName] isEqualToString:@MOZ_APP_NAME])
++    {
++      [currApp unhide];
++      // NSLog(@"UNHIDING: %@", [currApp localizedName]);
++    }
++  }
++}
++
++- (BOOL)isBrowser
++{
++  NSArray * arguments = [[NSProcessInfo processInfo] arguments];
++
++  BOOL rv = NO;
++  for (NSString *arg in arguments)
++  {
++    //NSLog(@"ARGUMENT: [%@]", arg);
++    rv = ([arg rangeOfString:@"chrome://browser" options:NSCaseInsensitiveSearch].location != NSNotFound);
++    if (rv) break;
++  }
++
++  return rv;
++}
++
++/** 
++ *
++ *  END SECURE BROWSER METHODS
++ *
++ */
++
+ - (id)init
+ {
+   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_RETURN;
+ 
++  // SECURE BROWSER 
++  [self secureBrowserInit];
++   
+   if ((self = [super init])) {
+     NSAppleEventManager *aeMgr = [NSAppleEventManager sharedAppleEventManager];
+ 
+@@ -302,6 +496,11 @@
+ // (from the browser or from the OS) can result in an unclean shutdown.
+ - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
+ {
++  // SECURE BROWSER prevent system restart from shutting us down
++
++  return NSTerminateCancel;
++
++/************
+   nsCOMPtr<nsIObserverService> obsServ =
+            do_GetService("@mozilla.org/observer-service;1");
+   if (!obsServ)
+@@ -326,6 +525,13 @@
+     appService->Quit(nsIAppStartup::eForceQuit);
+ 
+   return NSTerminateNow;
++************/
++}
++
++- (void) applicationWillResignActive:(NSNotification *)aNotification
++{
++  // NSLog(@"******** WILL RESIGN ACTIVE ********");
++  [self secureBrowserHideOtherApps];
+ }
+ 
+ - (void)handleAppleEvent:(NSAppleEventDescriptor*)event withReplyEvent:(NSAppleEventDescriptor*)replyEvent
+@@ -394,4 +600,17 @@
+   }
+ }
+ 
++-(void)applicationWillTerminate:(NSNotification *)aNotification
++{
++  // NSLog(@"-------- MAIN applicationWillTerminate --------");
++
++  // SECURE BROWSER
++  [self secureBrowserCleanup];
++}
++
++- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)theApplication
++{
++  return YES;
++}
++
+ @end
+diff -r 0cd2e9a8ba6f widget/cocoa/nsAppShell.h
+--- a/widget/cocoa/nsAppShell.h	Tue May 06 17:59:59 2014 -0400
++++ b/widget/cocoa/nsAppShell.h	Mon Sep 01 08:56:57 2014 -0600
+@@ -76,6 +76,12 @@
+   // public only to be visible to Objective-C code that must call it
+   void WillTerminate();
+ 
++  // SECURE BROWSER
++  void HandleSpaces();
++  void HandleExpose();
++  void HandleKeyboardAccess();
++  bool IsBrowser();
++
+ protected:
+   virtual ~nsAppShell();
+ 
+@@ -113,6 +119,9 @@
+   int32_t            mNativeEventCallbackDepth;
+   // Can be set from different threads, so must be modified atomically
+   int32_t            mNativeEventScheduledDepth;
++
++  // SECURE BROWSER
++  NSNumber *mKeyboardAccess;
+ };
+ 
+ #endif // nsAppShell_h_
+diff -r 0cd2e9a8ba6f widget/cocoa/nsAppShell.mm
+--- a/widget/cocoa/nsAppShell.mm	Tue May 06 17:59:59 2014 -0400
++++ b/widget/cocoa/nsAppShell.mm	Mon Sep 01 08:56:57 2014 -0600
+@@ -37,6 +37,8 @@
+ 
+ #include "npapi.h"
+ 
++#include "mozilla/Preferences.h"
++
+ using namespace mozilla::widget;
+ 
+ // defined in nsCocoaWindow.mm
+@@ -143,6 +145,7 @@
+ 
+ @implementation GeckoNSApplication
+ 
++
+ - (void)sendEvent:(NSEvent *)anEvent
+ {
+   mozilla::HangMonitor::NotifyActivity();
+@@ -213,6 +216,7 @@
+ , mRecursionDepth(0)
+ , mNativeEventCallbackDepth(0)
+ , mNativeEventScheduledDepth(0)
++, mKeyboardAccess(nullptr)
+ {
+   // A Cocoa event loop is running here if (and only if) we've been embedded
+   // by a Cocoa app (like Camino).
+@@ -332,6 +336,10 @@
+     gAppShellMethodsSwizzled = true;
+   }
+ 
++  HandleSpaces();
++  HandleExpose();
++  HandleKeyboardAccess();
++
+   [localPool release];
+ 
+   return rv;
+@@ -339,6 +347,198 @@
+   NS_OBJC_END_TRY_ABORT_BLOCK_NSRESULT;
+ }
+ 
++// SECURE BROWSER
++bool 
++nsAppShell::IsBrowser()
++{
++  NSArray * arguments = [[NSProcessInfo processInfo] arguments];
++
++  BOOL rv = NO;
++  for (NSString *arg in arguments)
++  {
++    //NSLog(@"ARGUMENT: [%@]", arg);
++    rv = ([arg rangeOfString:@"chrome://browser" options:NSCaseInsensitiveSearch].location != NSNotFound);
++    if (rv) break;
++  }
++
++  return rv;
++}
++
++void
++nsAppShell::HandleKeyboardAccess()
++{
++  if (IsBrowser()) return;
++
++  NSString *homeDir = NSHomeDirectory();
++  NSString *prefsDir = [NSString stringWithFormat:@"%@%@", homeDir, @"/Library/Preferences/"];
++
++  NSBundle *BundlePath = [NSBundle bundleWithPath:prefsDir];
++  NSURL *url = [BundlePath URLForResource:@".GlobalPreferences" withExtension:@"plist"];
++
++  if (!url)  url = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%@%@%@", prefsDir, @".GlobalPreferences", @".plist"]];
++
++  if (!url) return;
++
++  // NSLog(@"url:  %@", url);
++
++  NSDictionary *dict = [NSDictionary dictionaryWithContentsOfURL:url];
++
++  if (dict)
++  {
++    NSNumber *n = [dict objectForKey:@"AppleKeyboardUIMode"];
++
++    NSMutableDictionary *muteDict = [dict mutableCopy];
++
++    // NSLog(@"MuteDict:  %@", muteDict);
++
++    if (!mKeyboardAccess) 
++    {
++      // printf("-------- mKeyboardAccess NULL POINTER --------\n");
++      mKeyboardAccess = n;
++
++      [muteDict setObject:[NSNumber numberWithInt:3] forKey:@"AppleKeyboardUIMode"];
++    }
++      else
++    {
++      // NSLog(@"-------- mKeyboardAccess VAL: %@ --------", mKeyboardAccess);
++      [muteDict setObject:mKeyboardAccess forKey:@"AppleKeyboardUIMode"];
++    }
++
++    // NSLog(@"-------- KEYBOARD ACCESS: %@ --------", n);
++
++    NSString *error;
++    NSData* binaryData = [NSPropertyListSerialization dataFromPropertyList:muteDict format:NSPropertyListBinaryFormat_v1_0 errorDescription:&error];
++
++    if (error) NSLog(@"ERROR:  %@", error);
++
++    if (binaryData) [binaryData writeToURL:url atomically:NO];
++  }
++}
++
++void
++nsAppShell::HandleSpaces()
++{
++  if (IsBrowser()) return;
++
++  BOOL spacesEnabled = NO;
++
++  NSString *homeDir = NSHomeDirectory();
++  NSString *prefsDir = [NSString stringWithFormat:@"%@%@", homeDir, @"/Library/Preferences/"];
++
++  NSBundle *BundlePath = [NSBundle bundleWithPath:prefsDir];
++  NSURL *url = [BundlePath URLForResource:@"com.apple.symbolichotkeys" withExtension:@"plist"];
++
++  if (!url)  url = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%@%@%@", prefsDir, @"com.apple.symbolichotkeys", @".plist"]];
++
++  if (!url) return;
++
++  NSDictionary *dict = [NSDictionary dictionaryWithContentsOfURL:url];
++
++  if (dict)
++  {
++    NSNumber *n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"79"] objectForKey:@"enabled"];
++    spacesEnabled = [n boolValue];
++
++    if (!spacesEnabled)
++    {
++      n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"80"] objectForKey:@"enabled"];
++      spacesEnabled = [n boolValue];
++    }
++
++    if (!spacesEnabled)
++    {
++      n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"81"] objectForKey:@"enabled"];
++      spacesEnabled = [n boolValue];
++    }
++
++    if (!spacesEnabled)
++    {
++      n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"82"] objectForKey:@"enabled"];
++      spacesEnabled = [n boolValue];
++    }
++
++    nsCOMPtr<nsIPrefService> ps = do_GetService("@mozilla.org/preferences-service;1");
++ 
++    if (ps) 
++    {
++      nsCOMPtr<nsIPrefBranch> pb;
++      ps->GetDefaultBranch(nullptr, getter_AddRefs(pb));
++
++      if (pb) pb->SetBoolPref("bmakiosk.spaces.enabled", spacesEnabled ? true : false);
++    }
++
++    // printf("------ SPACES ENABLED:%s ------\n", spacesEnabled ? "YES" : "NO");
++  }
++}
++
++void
++nsAppShell::HandleExpose()
++{
++  if (IsBrowser()) return;
++
++  BOOL exposeEnabled = NO;
++
++  NSString *homeDir = NSHomeDirectory();
++  NSString *prefsDir = [NSString stringWithFormat:@"%@%@", homeDir, @"/Library/Preferences/"];
++
++  NSBundle *BundlePath = [NSBundle bundleWithPath:prefsDir];
++  NSURL *url = [BundlePath URLForResource:@"com.apple.symbolichotkeys" withExtension:@"plist"];
++
++  if (!url)  url = [NSURL fileURLWithPath:[NSString stringWithFormat:@"%@%@%@", prefsDir, @"com.apple.symbolichotkeys", @".plist"]];
++
++  if (!url) return;
++
++  NSDictionary *dict = [NSDictionary dictionaryWithContentsOfURL:url];
++
++  if (dict)
++  {
++    NSNumber *n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"32"] objectForKey:@"enabled"];
++    exposeEnabled = [n boolValue];
++
++    if (!exposeEnabled)
++    {
++      n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"33"] objectForKey:@"enabled"];
++      exposeEnabled = [n boolValue];
++    }
++
++    if (!exposeEnabled)
++    {
++      n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"34"] objectForKey:@"enabled"];
++      exposeEnabled = [n boolValue];
++    }
++
++    if (!exposeEnabled)
++    {
++      n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"35"] objectForKey:@"enabled"];
++      exposeEnabled = [n boolValue];
++    }
++
++    if (!exposeEnabled)
++    {
++      n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"36"] objectForKey:@"enabled"];
++      exposeEnabled = [n boolValue];
++    }
++
++    if (!exposeEnabled)
++    {
++      n = [[[dict objectForKey:@"AppleSymbolicHotKeys"] objectForKey:@"37"] objectForKey:@"enabled"];
++      exposeEnabled = [n boolValue];
++    }
++
++    nsCOMPtr<nsIPrefService> ps = do_GetService("@mozilla.org/preferences-service;1");
++ 
++    if (ps) 
++    {
++      nsCOMPtr<nsIPrefBranch> pb;
++      ps->GetDefaultBranch(nullptr, getter_AddRefs(pb));
++
++      if (pb) pb->SetBoolPref("bmakiosk.expose.enabled", exposeEnabled ? true : false);
++    }
++
++    // printf("------ EXPOSE ENABLED:%s ------\n", exposeEnabled ? "YES" : "NO");
++  }
++}
++
+ // ProcessGeckoEvents
+ //
+ // The "perform" target of mCFRunLoop, called when mCFRunLoopSource is
+@@ -459,6 +659,9 @@
+ void
+ nsAppShell::WillTerminate()
+ {
++  // SECURE BROWSER
++  HandleKeyboardAccess();
++
+   if (mTerminated)
+     return;
+ 
+diff -r 0cd2e9a8ba6f widget/cocoa/nsCocoaWindow.h
+--- a/widget/cocoa/nsCocoaWindow.h	Tue May 06 17:59:59 2014 -0400
++++ b/widget/cocoa/nsCocoaWindow.h	Fri Jun 27 12:08:05 2014 -0600
+@@ -15,6 +15,8 @@
+ #include "nsAutoPtr.h"
+ #include "nsCocoaUtils.h"
+ 
++#include "mozilla/Preferences.h"
++
+ class nsCocoaWindow;
+ class nsChildView;
+ class nsMenuBarX;
+@@ -178,6 +180,7 @@
+   // NS_DEACTIVATE to Gecko for toplevel widgets.  Starts out
+   // false.
+   bool mToplevelActiveState;
++  nsCOMPtr<nsIPrefBranch> mPrefs;
+   BOOL mHasEverBeenZoomed;
+ }
+ + (void)paintMenubarForWindow:(NSWindow*)aWindow;
+diff -r 0cd2e9a8ba6f widget/cocoa/nsCocoaWindow.mm
+--- a/widget/cocoa/nsCocoaWindow.mm	Tue May 06 17:59:59 2014 -0400
++++ b/widget/cocoa/nsCocoaWindow.mm	Tue Jul 01 13:32:18 2014 -0600
+@@ -37,7 +37,8 @@
+ 
+ #include "mozilla/AutoRestore.h"
+ #include "mozilla/BasicEvents.h"
+-#include "mozilla/Preferences.h"
++// SECURE BROWSER
++#include "nsIObserverService.h"
+ #include <algorithm>
+ 
+ namespace mozilla {
+@@ -2221,6 +2222,7 @@
+   mGeckoWindow = geckoWind;
+   mToplevelActiveState = false;
+   mHasEverBeenZoomed = false;
++  mPrefs = do_GetService(NS_PREFSERVICE_CONTRACTID);
+   return self;
+ 
+   NS_OBJC_END_TRY_ABORT_BLOCK_NIL;
+@@ -2478,6 +2480,8 @@
+   return mToplevelActiveState;
+ }
+ 
++bool gHideMenubar = false;
++
+ - (void)sendToplevelActivateEvents
+ {
+   if (!mToplevelActiveState && mGeckoWindow) {
+@@ -2486,16 +2490,137 @@
+       listener->WindowActivated();
+     mToplevelActiveState = true;
+   }
++
++  if (gHideMenubar) 
++  {
++    SetSystemUIMode(kUIModeAllHidden, kUIOptionDisableProcessSwitch    |
++                                      kUIOptionDisableForceQuit        |
++                                      kUIOptionDisableSessionTerminate |
++                                      kUIOptionDisableAppleMenu);
++    gHideMenubar = false;
++  }
+ }
+ 
++/**
++ *
++ *  SECURE BROWSER METHODS
++ *
++ */
++
++- (BOOL)isBrowser
++{
++  NSArray * arguments = [[NSProcessInfo processInfo] arguments];
++
++  BOOL rv = NO;
++  for (NSString *arg in arguments)
++  {
++    //NSLog(@"ARGUMENT: [%@]", arg);
++    rv = ([arg rangeOfString:@"chrome://browser" options:NSCaseInsensitiveSearch].location != NSNotFound);
++    if (rv) break;
++  }
++
++  return rv;
++}
++
++- (void)secureBrowserHandleDeactivate
++{
++  if ([self isBrowser]) return;
++
++  if (mToplevelActiveState)
++  {
++    bool permissiveMode = PR_FALSE;
++    bool showChrome = PR_FALSE;
++
++    if (mPrefs)
++    {
++      mPrefs->GetBoolPref("bmakiosk.mode.permissive", &permissiveMode);
++      mPrefs->GetBoolPref("bmakiosk.mode.showChrome", &showChrome);
++    }
++
++    if (!permissiveMode && !showChrome)
++    {
++      mToplevelActiveState = false;
++
++      bool killProcess = false;
++      bool shutDown = false;
++
++      if (mPrefs)
++      {
++        mPrefs->GetBoolPref("bmakiosk.system.enableKillProcess", &killProcess);
++        mPrefs->GetBoolPref("bmakiosk.system.shutdownOnNewProcess", &shutDown);
++      }
++
++      // NSLog(@"****************** KILL PREF (%d)", killProcess);
++
++      for (NSRunningApplication *currApp in [[NSWorkspace sharedWorkspace] runningApplications]) 
++      {
++        if ([currApp isActive]) 
++        {
++          if ([@"ScreenSaverEngine" isEqualToString:[currApp localizedName]]) break;
++
++          if ([[currApp localizedName] rangeOfString:@"Plugin Process" options:NSCaseInsensitiveSearch].location != NSNotFound) 
++          {
++            gHideMenubar = true;
++            break;
++          }
++
++          if ([[currApp localizedName] isEqualToString:[[NSRunningApplication currentApplication] localizedName]]) break;
++
++          if (!killProcess) 
++          {
++            NSLog(@"****************** HIDING: %@", [currApp localizedName]);
++            [currApp hide];
++          }
++            else 
++          {
++            // NSLog(@"****************** KILLING: %@", [currApp localizedName]);
++            [currApp forceTerminate];
++          }
++
++          if (shutDown) 
++          {
++            nsCOMPtr<nsIObserverService> observerService = do_GetService("@mozilla.org/observer-service;1");
++
++            if (observerService)
++            {
++              printf("-------- NOTIFY OBSERVERS --------\n");
++              observerService->NotifyObservers(nullptr, "sb-security-breach", nullptr);
++            }
++          }
++        } 
++      }  
++    }
++  }
++}
++
++- (void)secureBrowserHideOtherApps
++{
++  if ([self isBrowser]) return;
++
++  [[NSWorkspace sharedWorkspace] hideOtherApplications];
++  [[NSRunningApplication currentApplication] unhide];
++}
++
++/**
++ *
++ *  END SECURE BROWSER METHODS
++ *
++ */
++
+ - (void)sendToplevelDeactivateEvents
+ {
++  // SECURE BROWSER
++  [self secureBrowserHideOtherApps];
++  [self secureBrowserHandleDeactivate];
++
+   if (mToplevelActiveState && mGeckoWindow) {
+     nsIWidgetListener* listener = mGeckoWindow->GetWidgetListener();
+     if (listener)
+       listener->WindowDeactivated();
+     mToplevelActiveState = false;
+   }
++
++  [self secureBrowserHideOtherApps];
+ }
+ 
+ @end
+diff --git a/widget/windows/nsAppShell.cpp b/widget/windows/nsAppShell.cpp
+--- a/widget/windows/nsAppShell.cpp
++++ b/widget/windows/nsAppShell.cpp
+@@ -6,21 +6,30 @@
+ #include "mozilla/ipc/MessageChannel.h"
+ #include "nsAppShell.h"
+ #include "nsToolkit.h"
+ #include "nsThreadUtils.h"
+ #include "WinUtils.h"
+ #include "WinTaskbar.h"
+ #include "WinMouseScrollHandler.h"
+ #include "nsWindowDefs.h"
++#include <propsys.h>
++#include <propvarutil.h>
++#include <propkey.h>
++#include "Shellapi.h"
+ #include "nsString.h"
+ #include "WinIMEHandler.h"
+ #include "mozilla/widget/AudioSession.h"
+ #include "mozilla/HangMonitor.h"
+ 
++// SECURE BROWSER
++#include "mozilla/Preferences.h"
++#include <process.h>
++#include <commctrl.h>
++
+ using namespace mozilla;
+ using namespace mozilla::widget;
+ 
+ namespace mozilla {
+ namespace widget {
+ // Native event callback message.
+ UINT sAppShellGeckoMsgId = RegisterWindowMessageW(L"nsAppShell:EventID");
+ } }
+@@ -36,30 +45,690 @@ UINT nsAppShell::GetTaskbarButtonCreated
+ namespace mozilla {
+ namespace crashreporter {
+ void LSPAnnotate();
+ } // namespace crashreporter
+ } // namespace mozilla
+ 
+ using mozilla::crashreporter::LSPAnnotate;
+ 
++// START:SECURE BROWSER
++#define HKCU HKEY_CURRENT_USER
++
++// Magic registry key/value for "Remove Task Manager" policy.
++
++// LPCTSTR KEY_DisableTaskMgr = (LPCTSTR)"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System";
++PRUnichar* KEY_DisableTaskMgr = L"Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System";
++
++// LPCTSTR VAL_DisableTaskMgr = (LPCTSTR)"DisableTaskMgr";
++PRUnichar* VAL_DisableTaskMgr = L"DisableTaskMgr";
++
++STICKYKEYS g_StartupStickyKeys = {sizeof(STICKYKEYS), 0};
++TOGGLEKEYS g_StartupToggleKeys = {sizeof(TOGGLEKEYS), 0};
++FILTERKEYS g_StartupFilterKeys = {sizeof(FILTERKEYS), 0};
++
++HIGHCONTRAST g_StartupHighContrast = {sizeof(HIGHCONTRAST), 0};
++
++// MOUSEKEYS g_StartupMouseKeys;
++MOUSEKEYS g_StartupMouseKeys = {sizeof(MOUSEKEYS), 0};
++
++HHOOK g_Hook = NULL;
++bool g_IsSet = false;
++bool g_TMWasSet = false;
++bool g_SessionLockWasSet = false;
++bool g_SessionLockKey = false;
++bool g_HideFastUserWasSet = false;
++bool g_WinKeyWasPressed = false;
++DWORD g_HideFastUser;
++DWORD g_TMVal;
++
++bool SBCleanUpCalled = false;
++
++char G_CONFIGURATION[2048];
++
++// #define DEBUG_PETE
++
++void PrintLogMsg (char *aMsg)
++{
++
++#ifndef DEBUG_PETE
++  return;
++#endif
++
++  char path[MAX_PATH] = "c:\\tmp\\out.log";
++
++  FILE* mLog;
++  mLog = fopen(path, "a");
++
++  fprintf(mLog, "LOG MESSAGE: (%s)\n", aMsg);
++  fflush(mLog);
++
++  fclose(mLog);
++}
++
++void PrintLogWMsg (wchar_t *aMsg)
++{
++
++#ifndef DEBUG_PETE
++  return;
++#endif
++
++  char path[MAX_PATH] = "c:\\tmp\\out.log";
++
++  FILE* mLog;
++  mLog = fopen(path, "a");
++
++  fwprintf(mLog, L"LOG W MESSAGE: (%ls)\n", aMsg);
++  fflush(mLog);
++
++  fclose(mLog);
++}
++
++void PrintLogInt (DWORD aInt)
++{
++
++#ifndef DEBUG_PETE
++  return;
++#endif
++
++  char path[MAX_PATH] = "c:\\tmp\\out.log";
++
++  FILE* mLog;
++  mLog = fopen(path, "a");
++
++  fprintf(mLog, "LOG INT: (%d)\n", aInt);
++  fflush(mLog);
++
++  fclose(mLog);
++}
++
++static bool IsVistaOrGreater()
++{
++  OSVERSIONINFOEX osvi;
++
++  ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
++
++  osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
++
++  GetVersionEx((OSVERSIONINFO *) &osvi);
++
++  return (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion >= 0);
++}
++
++static BOOL CALLBACK gEnumWindowsProc(HWND hwnd, LPARAM lParam)
++{
++
++#ifndef DEBUG_PETE
++  return TRUE;
++#endif
++
++  PrintLogMsg("CALLBACK");
++
++  // char name[256];
++  // GetWindowText(hwnd, name, 256);
++
++  // PrintLogMsg(name);
++
++  if (::IsWindowVisible(hwnd))
++  {
++    PrintLogMsg("WINDOW IS VISIBLE");
++   // return false;
++  }
++  return TRUE;
++}
++
++LRESULT CALLBACK LowLevelKeyboardProc (INT nCode, WPARAM wParam, LPARAM lParam)
++{
++    // By returning a non-zero value from the hook procedure, the
++    // message does not get passed to the target window
++    KBDLLHOOKSTRUCT *pkbhs = (KBDLLHOOKSTRUCT *) lParam;
++    BOOL bControlKeyDown = 0;
++    BOOL bShiftKeyDown = 0;
++    BOOL bMenuKeyDown = 0;
++    BOOL bLMenuKeyDown = 0;
++    BOOL bRShiftKeyDown = 0;
++    BOOL bLShiftKeyDown = 0;
++
++    switch (nCode)
++    {
++        case HC_ACTION:
++        {
++            // Check to see if the CTRL key is pressed
++            bControlKeyDown = (GetAsyncKeyState(VK_CONTROL) & 0x8000);
++
++            // Check to see if the SHIFT key is pressed
++            bShiftKeyDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000);
++
++            // Check to see if the RIGHT SHIFT key is pressed
++            bRShiftKeyDown = (GetAsyncKeyState(VK_RSHIFT) & 0x8000);
++
++            // Check to see if the LEFT SHIFT key is pressed
++            bLShiftKeyDown = (GetAsyncKeyState(VK_LSHIFT) & 0x8000);
++
++           // Check to see if the ALT key is pressed
++            bMenuKeyDown = (GetAsyncKeyState(VK_MENU) & 0x8000);
++
++            // Check to see if the LEFT ALT key is pressed
++            bLMenuKeyDown = (GetAsyncKeyState(VK_LMENU) & 0x8000);
++
++            // Disable CTRL+ESC
++            if (pkbhs->vkCode == VK_ESCAPE && bControlKeyDown)
++                return 1;
++
++            // Disable ALT+TAB
++            if ( (GetKeyState(VK_LMENU) & 0x8000) && pkbhs->vkCode == VK_TAB)
++            {
++              bool showChrome = mozilla::Preferences::GetBool("bmakiosk.mode.showChrome", true);
++
++              return showChrome ? 0 : 1;
++            }
++
++            // Disable ALT+TAB
++            if ( (GetKeyState(VK_RMENU) & 0x8000) && pkbhs->vkCode == VK_TAB)
++                return 1;
++
++            // Disable ALT+TAB
++            if (pkbhs->vkCode == VK_TAB && pkbhs->flags & LLKHF_ALTDOWN)
++                return 1;
++
++            // Disable ALT+TAB
++            if (pkbhs->vkCode == VK_TAB && pkbhs->flags & LLKHF_ALTDOWN)
++                return 1;
++
++            // Disable ALT+ESC
++            if (pkbhs->vkCode == VK_ESCAPE && pkbhs->flags & LLKHF_ALTDOWN)
++                return 1;
++
++            // Disable LEFT WIN KEY & BREAK
++            if (pkbhs->vkCode == VK_PAUSE)
++                return 1;
++
++            if (g_WinKeyWasPressed)
++            {
++              if (pkbhs->vkCode == 0x30 || pkbhs->vkCode == 0x31 ||
++                  pkbhs->vkCode == 0x32 || pkbhs->vkCode == 0x33 ||
++                  pkbhs->vkCode == 0x34 || pkbhs->vkCode == 0x35 ||
++                  pkbhs->vkCode == 0x36 || pkbhs->vkCode == 0x37 ||
++                  pkbhs->vkCode == 0x38 || pkbhs->vkCode == 0x39)
++
++                g_WinKeyWasPressed = false;
++                return 1;
++
++            }
++
++            // Disable LEFT/RIGHT WIN BUTTONS
++            if (pkbhs->vkCode == VK_LWIN || pkbhs->vkCode == VK_RWIN)
++            {
++              g_WinKeyWasPressed = true;
++              return 1;
++            }
++              else
++            {
++              g_WinKeyWasPressed = false;
++            }
++
++
++            // Disable Ctrl+F4
++            if (pkbhs->vkCode == VK_F4 && bControlKeyDown)
++                return 1;
++
++            // Disable ALT+F4
++            if (pkbhs->vkCode == VK_F4 && bMenuKeyDown)
++                return 1;
++
++            // Disable ALT+SPACE
++            if (pkbhs->vkCode == VK_SPACE && bMenuKeyDown)
++                return 1;
++
++            // Disable CTRL+ALT+TAB
++            if (pkbhs->vkCode == VK_TAB && bMenuKeyDown && bControlKeyDown)
++                return 1;
++
++            // Disable SHIFT ESCAPE
++            if (pkbhs->vkCode == VK_ESCAPE && bShiftKeyDown)
++                return 1;
++
++            // Disable LEFT ALT+LEFT SHIFT+PRINT SCREEN
++            if (pkbhs->vkCode == VK_SNAPSHOT && bLMenuKeyDown && bShiftKeyDown)
++                return 1;
++
++            // Disable CTRL+ALT+LEFT ARROW
++            if (pkbhs->vkCode == VK_LEFT && bMenuKeyDown && bControlKeyDown)
++                return 1;
++
++            // Disable CTRL+ALT+UP ARROW
++            if (pkbhs->vkCode == VK_UP && bMenuKeyDown && bControlKeyDown)
++                return 1;
++
++            // Disable CTRL+ALT+RIGHT ARROW
++            if (pkbhs->vkCode == VK_RIGHT && bMenuKeyDown && bControlKeyDown)
++                return 1;
++
++            // Disable CTRL+ALT+DOWN ARROW
++            if (pkbhs->vkCode == VK_DOWN && bMenuKeyDown && bControlKeyDown)
++                return 1;
++
++            // Disable CTRL+ALT+DELETE
++            if (pkbhs->vkCode == VK_DELETE && bMenuKeyDown && bControlKeyDown)
++                return 1;
++
++            // Disable Left Alt+Shift+NumLock - doesn't work
++            if (pkbhs->vkCode == VK_NUMLOCK && bShiftKeyDown && bMenuKeyDown)
++                return 1;
++
++            // not listed in vir keycodes
++            if (pkbhs->vkCode == 0x5F)
++                return 1;
++
++            // not listed in vir keycodes
++            if (pkbhs->vkCode == 0xAA)
++                return 1;
++
++            // not listed in vir keycodes
++            if (pkbhs->vkCode == 0xAB)
++                return 1;
++
++            // not listed in vir keycodes
++            if (pkbhs->vkCode == 0xAC)
++                return 1;
++
++            // not listed in vir keycodes
++            if (pkbhs->vkCode == 0xB2)
++                return 1;
++
++            if (pkbhs->vkCode == 0xB0)
++                return 1;
++
++            if (pkbhs->vkCode == 0xB1)
++                return 1;
++
++            if (pkbhs->vkCode == 0xB3)
++                return 1;
++
++            if (pkbhs->vkCode == 0xB4)
++                return 1;
++
++            if (pkbhs->vkCode == 0xB5)
++                return 1;
++
++            if (pkbhs->vkCode == 0xB6)
++                return 1;
++
++            if (pkbhs->vkCode == 0xB7)
++                return 1;
++
++            break;
++        }
++
++        default:
++            break;
++    }
++
++    return CallNextHookEx (g_Hook, nCode, wParam, lParam);
++}
++
++void DisableWinDesktop(BOOL bDisable)
++{
++
++  /**
++   * This code is here because xpcshell is run for tests
++   * and we don't want SB specific features to run 
++   */
++
++  // START XPCSHELL
++  WCHAR exeName[MAX_PATH];
++  GetModuleFileName(NULL, exeName, MAX_PATH);
++
++  nsAutoString exe(exeName);
++
++  int r = exe.Find(NS_LITERAL_STRING("xpcshell.exe"), 0);
++
++  if (exe.Find(NS_LITERAL_STRING("xpcshell.exe"), 0) >= 0) return;
++  // END XPCSHELL
++
++  LONG res = 0;
++
++  // task manager (Ctrl+Alt+Del)
++  HKEY hk;
++
++  if (RegOpenKeyEx(HKCU, KEY_DisableTaskMgr, 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) != ERROR_SUCCESS)
++  {
++    res = RegCreateKey(HKCU, KEY_DisableTaskMgr, &hk);
++  }
++
++  if (bDisable)
++  {
++    // disable TM: set policy = 1
++    DWORD val = 1;
++
++    DWORD v,t,s=sizeof(DWORD);
++
++    // see if Session Locked is was already disabled ...
++    res = RegQueryValueEx(hk, L"DisableLockWorkstation", NULL, &t, (LPBYTE)&v, &s);
++
++    if (res == ERROR_SUCCESS) 
++    {
++      g_SessionLockKey = TRUE;
++
++      if (t == REG_DWORD && v == 1) g_SessionLockWasSet = TRUE;
++    }
++
++    // disable Windows +L - DisableLockWorkstation
++    if (!g_SessionLockWasSet)
++      res = RegSetValueEx(hk, L"DisableLockWorkstation", NULL, REG_DWORD, (BYTE*)&val, sizeof(val));
++
++    // see if Task Manager was already disabled ...
++    res = RegQueryValueEx(hk, VAL_DisableTaskMgr, NULL, &t, (LPBYTE)&v, &s);
++
++    if (res == ERROR_SUCCESS && t == REG_DWORD) 
++    {
++      g_TMWasSet = TRUE;
++      g_TMVal = v;
++    }
++
++    res = RegSetValueEx(hk, VAL_DisableTaskMgr, NULL, REG_DWORD, (BYTE*)&val, sizeof(val));
++
++    if (IsVistaOrGreater())
++    {
++      if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++      {
++        v = NULL;
++        
++        res = RegQueryValueEx(hk, L"HideFastUserSwitching", NULL, &t, (LPBYTE)&v, &s);
++        if (res == ERROR_SUCCESS) 
++        {
++          g_HideFastUser = v;
++          g_HideFastUserWasSet = TRUE;
++        }
++
++        res = RegSetValueEx(hk, L"HideFastUserSwitching", NULL, REG_DWORD, (BYTE*)&val, sizeof(val));
++      }
++
++      if (RegOpenKeyEx(HKCU, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Accessibility", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++      {
++        DWORD size = sizeof(G_CONFIGURATION);
++
++        // the the currently set value and set it globally so we can reset it when we shut down
++        res = RegQueryValueEx(hk, L"Configuration", NULL, NULL, (LPBYTE)G_CONFIGURATION, &size);
++
++        res = RegSetValueEx(hk, L"Configuration", NULL, REG_SZ, (const BYTE*)TEXT(""), sizeof(TEXT("")));
++      }
++    }
++
++    STICKYKEYS skOff = g_StartupStickyKeys;
++
++    // Disable the hotkey and the confirmation
++    skOff.dwFlags &= ~SKF_HOTKEYACTIVE;
++    skOff.dwFlags &= ~SKF_CONFIRMHOTKEY;
++
++    BOOL bSuccess = SystemParametersInfo(SPI_SETSTICKYKEYS, sizeof(STICKYKEYS), &skOff, 0);
++
++    TOGGLEKEYS tkOff = g_StartupToggleKeys; 
++
++    tkOff.dwFlags &= ~TKF_HOTKEYACTIVE;
++    tkOff.dwFlags &= ~TKF_CONFIRMHOTKEY;
++
++    bSuccess = SystemParametersInfo(SPI_SETTOGGLEKEYS, sizeof(TOGGLEKEYS), &tkOff, 0);
++
++    FILTERKEYS fkOff = g_StartupFilterKeys;
++
++    fkOff.dwFlags &= ~FKF_HOTKEYACTIVE;
++    fkOff.dwFlags &= ~FKF_CONFIRMHOTKEY;
++
++    bSuccess = SystemParametersInfo(SPI_SETFILTERKEYS, sizeof(FILTERKEYS), &fkOff, 0);
++
++    HIGHCONTRAST hcOff = g_StartupHighContrast;
++
++    hcOff.dwFlags &= ~HCF_HOTKEYACTIVE;
++    hcOff.dwFlags &= ~HCF_CONFIRMHOTKEY;
++
++    // bSuccess = SystemParametersInfo(SPI_SETHIGHCONTRAST, sizeof(HIGHCONTRAST), &hcOff, 0);
++
++    MOUSEKEYS mkf;
++
++    // Fill in the members of the MOUSEKEYS structure.
++
++    mkf.cbSize = sizeof(MOUSEKEYS);
++    mkf.dwFlags = NULL;
++    mkf.iMaxSpeed = 200;
++    mkf.iTimeToMaxSpeed = 1000;
++    mkf.iCtrlSpeed = 2;
++    mkf.dwReserved1 = 0;
++    mkf.dwReserved2 = 0;
++
++    // Call SystemParametersInfo with the SPI_SETMOUSEKEYS flag. 
++
++    bSuccess = SystemParametersInfo(SPI_SETMOUSEKEYS, sizeof(MOUSEKEYS), (LPVOID) &mkf, 0); 
++  }
++    else
++  {
++    if (!g_TMWasSet) RegDeleteValue(hk, VAL_DisableTaskMgr);
++    else RegSetValueEx(hk, VAL_DisableTaskMgr, NULL, REG_DWORD, (BYTE*)&g_TMVal, sizeof(g_TMVal));
++
++    if (!g_SessionLockWasSet && g_SessionLockKey) 
++    {
++      DWORD val = 0;
++      RegSetValueEx(hk, L"DisableLockWorkstation", NULL, REG_DWORD, (BYTE*)&val, sizeof(val));
++    }
++      else if (!g_SessionLockKey) RegDeleteValue(hk, L"DisableLockWorkstation");
++  }
++
++  HWND hwnd = FindWindow(L"Shell_traywnd", NULL);
++  ShowWindow(FindWindow(L"Shell_TrayWnd", NULL), SW_HIDE);
++  ShowWindow(FindWindowEx(hwnd, 0, L"Button", NULL), SW_HIDE);
++
++  if (bDisable)
++  {
++    ShowWindow(hwnd, SW_HIDE); // hide it
++    EnableWindow(hwnd, false); // disable it
++    EnableWindow(FindWindowEx(hwnd, 0, L"Button", NULL), false); // disable it
++
++    if (IsVistaOrGreater())
++    {
++      HWND startOrb = FindWindowEx(NULL, NULL, MAKEINTATOM(0xC017), NULL);
++      ShowWindow(startOrb, SW_HIDE); // Hide Vista Start Orb
++    }
++  }
++    else
++  {
++    ShowWindow(hwnd, SW_SHOW); // show it
++    EnableWindow(hwnd, TRUE);  // enable it
++    EnableWindow(FindWindowEx(hwnd, 0, L"Button", NULL), TRUE); // enable it
++    ShowWindow(FindWindowEx(hwnd, 0, L"Button", NULL), SW_SHOW);
++
++    if (IsVistaOrGreater())
++    {
++      HWND startOrb = FindWindowEx(NULL, NULL, MAKEINTATOM(0xC017), NULL);
++      ShowWindow(startOrb, SW_SHOW); // Show Vista Start Orb
++    }
++  }
++
++  UINT nPreviousState;
++  // this call only works on older win32 OS's --pete
++  SystemParametersInfo (SPI_SETSCREENSAVERRUNNING, TRUE, &nPreviousState, 0);
++
++  g_Hook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, GetModuleHandle(NULL), 0);
++
++}
++
++// END:SECURE BROWSER
++
+ //-------------------------------------------------------------------------
+ 
+ /*static*/ LRESULT CALLBACK
+ nsAppShell::EventWindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+ {
+   if (uMsg == sAppShellGeckoMsgId) {
+     nsAppShell *as = reinterpret_cast<nsAppShell *>(lParam);
+     as->NativeEventCallback();
+     NS_RELEASE(as);
+     return TRUE;
+   }
+   return DefWindowProc(hwnd, uMsg, wParam, lParam);
+ }
+ 
++nsAppShell::nsAppShell() :
++    mEventWnd(nullptr),
++    mNativeCallbackPending(false),
++    mLastNativeEventScheduledMutex("nsAppShell::mLastNativeEventScheduledMutex")
++{
++
++  printf("-------- nsAppShell::CONSTRUCTOR --------\n");
++
++  PrintLogMsg("nsAppShell::CONSTRUCTOR ...");
++
++  DisableWinDesktop(TRUE);
++
++  // PrintLogInt(g_IsSet);
++
++  if (!g_IsSet)
++  {
++    // PrintLogMsg("GETTING STATE INFO ...");
++
++    BOOL bStatus;
++    HKEY hk;
++    DWORD type;
++    char buf[2048];
++    DWORD size = sizeof(buf);
++
++
++    bStatus = SystemParametersInfo(SPI_GETSTICKYKEYS, sizeof(STICKYKEYS), &g_StartupStickyKeys, 0);
++
++    // PrintLogInt(bStatus);
++
++    // get sticky key flags
++    if (RegOpenKeyEx(HKCU, L"Control Panel\\Accessibility\\StickyKeys", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++    {
++      RegQueryValueEx(hk, L"Flags", NULL, &type, (LPBYTE)buf, &size);
++
++      if (type == REG_SZ)
++      {
++        // PrintLogMsg("STICKY KEYS");
++        // PrintLogMsg(buf);
++        g_StartupStickyKeys.dwFlags = atoi(buf);
++      }
++    }
++
++    bStatus = SystemParametersInfo(SPI_GETTOGGLEKEYS, sizeof(TOGGLEKEYS), &g_StartupToggleKeys, 0);
++    // PrintLogInt(bStatus);
++
++    // get toggle key flags
++    if (RegOpenKeyEx(HKCU, L"Control Panel\\Accessibility\\ToggleKeys", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++    {
++      RegQueryValueEx(hk, L"Flags", NULL, &type, (LPBYTE)buf, &size);
++
++      if (type == REG_SZ)
++      {
++        // PrintLogMsg("TOGGLE KEYS");
++        // PrintLogMsg(buf);
++        g_StartupToggleKeys.dwFlags = atoi(buf);
++      }
++    }
++
++    bStatus = SystemParametersInfo(SPI_GETFILTERKEYS, sizeof(FILTERKEYS), &g_StartupFilterKeys, 0);
++    // PrintLogInt(bStatus);
++
++    // get filter key flags
++    if (RegOpenKeyEx(HKCU, L"Control Panel\\Accessibility\\Keyboard Response", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++    {
++      RegQueryValueEx(hk, L"Flags", NULL, &type, (LPBYTE)buf, &size);
++
++      if (type == REG_SZ)
++      {
++        // PrintLogMsg("FILTER KEYS");
++        // PrintLogMsg(buf);
++        g_StartupFilterKeys.dwFlags = atoi(buf);
++      }    }
++
++    bStatus = SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(HIGHCONTRAST), &g_StartupHighContrast, 0);
++    // PrintLogInt(bStatus);
++
++    // get filter key flags
++    if (RegOpenKeyEx(HKCU, L"Control Panel\\Accessibility\\HighContrast", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++    {
++      RegQueryValueEx(hk, L"Flags", NULL, &type, (LPBYTE)buf, &size);
++
++      if (type == REG_SZ)
++      {
++        // PrintLogMsg("HIGH CONTRAST");
++        // PrintLogMsg(buf);
++        g_StartupHighContrast.dwFlags = atoi(buf);
++      }
++    }
++
++    g_StartupMouseKeys.dwFlags = 0;
++    g_StartupMouseKeys.iMaxSpeed = NULL;
++    g_StartupMouseKeys.iTimeToMaxSpeed = NULL;
++    g_StartupMouseKeys.iCtrlSpeed = NULL;
++    g_StartupMouseKeys.dwReserved1 = 0;
++    g_StartupMouseKeys.dwReserved2 = 0;
++
++    bStatus = SystemParametersInfo(SPI_GETMOUSEKEYS, sizeof(g_StartupMouseKeys), &g_StartupMouseKeys, 0);
++
++    // get mouse key flags
++    if (RegOpenKeyEx(HKCU, L"Control Panel\\Accessibility\\MouseKeys", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++    {
++      RegQueryValueEx(hk, L"Flags", NULL, &type, (LPBYTE)buf, &size);
++
++      if (type == REG_SZ)
++      {
++        // PrintLogMsg("MOUSE KEYS");
++        // PrintLogMsg(buf);
++        g_StartupMouseKeys.dwFlags = atoi(buf);
++      }
++    }
++
++    g_IsSet = TRUE;
++  }
++}
++
++void
++nsAppShell::SBCleanUp()
++{
++
++  if (SBCleanUpCalled) return;
++
++  printf("-------- nsAppShell::DESTRUCTOR --------\n");
++
++  PrintLogMsg("nsAppShell::DESTRUCTOR ....");
++    
++  DisableWinDesktop(false);
++    
++  BOOL bStatus;
++    
++  bStatus = SystemParametersInfo(SPI_SETSTICKYKEYS, sizeof(STICKYKEYS), &g_StartupStickyKeys, 0);
++  bStatus = SystemParametersInfo(SPI_SETTOGGLEKEYS, sizeof(TOGGLEKEYS), &g_StartupToggleKeys, 0);
++  bStatus = SystemParametersInfo(SPI_SETFILTERKEYS, sizeof(FILTERKEYS), &g_StartupFilterKeys, 0);
++  // bStatus = SystemParametersInfo(SPI_SETHIGHCONTRAST, sizeof(HIGHCONTRAST), &g_StartupHighContrast, 0);
++  bStatus = SystemParametersInfo(SPI_SETMOUSEKEYS, sizeof(MOUSEKEYS), &g_StartupMouseKeys, 0);
++      
++        
++  HKEY hk;
++  LONG res = 0;
++
++
++  if (IsVistaOrGreater())
++  {
++    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++    {
++      if (g_HideFastUserWasSet)
++        res = RegSetValueEx(hk, L"HideFastUserSwitching", NULL, REG_DWORD, (BYTE*)&g_HideFastUser, sizeof(g_HideFastUser));
++      else
++        res = RegDeleteValue(hk, L"HideFastUserSwitching");
++    }
++
++    if (RegOpenKeyEx(HKCU, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Accessibility", 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &hk) == ERROR_SUCCESS)
++    {
++      res = RegSetValueEx(hk, L"Configuration", NULL, REG_SZ, (const BYTE*)G_CONFIGURATION, strlen(G_CONFIGURATION));
++
++    }
++  }
++  SBCleanUpCalled = true;
++}
++
+ nsAppShell::~nsAppShell()
+ {
+   if (mEventWnd) {
+     // DestroyWindow doesn't do anything when called from a non UI thread.
+     // Since mEventWnd was created on the UI thread, it must be destroyed on
+     // the UI thread.
+     SendMessage(mEventWnd, WM_CLOSE, 0, 0);
+   }
+@@ -115,16 +784,17 @@ nsAppShell::Run(void)
+   mozilla::widget::StopAudioSession();
+ 
+   return rv;
+ }
+ 
+ NS_IMETHODIMP
+ nsAppShell::Exit(void)
+ {
++  SBCleanUp();
+   return nsBaseAppShell::Exit();
+ }
+ 
+ void
+ nsAppShell::DoProcessMoreGeckoEvents()
+ {
+   // Called by nsBaseAppShell's NativeEventCallback() after it has finished
+   // processing pending gecko events and there are still gecko events pending
+@@ -249,8 +919,9 @@ nsAppShell::ProcessNextNativeEvent(bool 
+         TimeStamp::NowLoRes() - mLastNativeEventScheduled;
+   }
+   if (timeSinceLastNativeEventScheduled > nativeEventStarvationLimit) {
+     ScheduleNativeEventCallback();
+   }
+   
+   return gotMessage;
+ }
++
+diff -r 0cd2e9a8ba6f widget/windows/nsAppShell.h
+--- a/widget/windows/nsAppShell.h	Tue May 06 17:59:59 2014 -0400
++++ b/widget/windows/nsAppShell.h	Fri Jun 27 12:08:05 2014 -0600
+@@ -21,11 +21,10 @@
+ class nsAppShell : public nsBaseAppShell
+ {
+ public:
+-  nsAppShell() :
+-    mEventWnd(nullptr),
+-    mNativeCallbackPending(false),
+-    mLastNativeEventScheduledMutex("nsAppShell::mLastNativeEventScheduledMutex")
+-  {}
++
++  nsAppShell();
++  void SBCleanUp();
++
+   typedef mozilla::TimeStamp TimeStamp;
+   typedef mozilla::Mutex Mutex;
+ 
+diff --git a/widget/windows/nsWindow.cpp b/widget/windows/nsWindow.cpp
+--- a/widget/windows/nsWindow.cpp
++++ b/widget/windows/nsWindow.cpp
+@@ -291,16 +291,84 @@ static const int32_t kResizableBorderMin
+ #define MAX_ACCELERATED_DIMENSION 8192
+ 
+ // On window open (as well as after), Windows has an unfortunate habit of
+ // sending rather a lot of WM_NCHITTEST messages. Because we have to do point
+ // to DOM target conversions for these, we cache responses for a given
+ // coordinate this many milliseconds:
+ #define HITTEST_CACHE_LIFETIME_MS 50
+ 
++// SECURE BROWSER
++void
++SetTouchDisableProperty(HWND hwnd, BOOL fDisableTouch)
++{
++    // printf("-------- SetTouchDisableProperty DISABLE [%s] --------\n", fDisableTouch ? "TRUE" : "FALSE");
++
++    IPropertyStore* pPropStore;
++
++    typedef HRESULT (WINAPI * SHGetPropertyStoreForWindowPtr)
++                    (HWND hwnd, REFIID riid, void** ppv);
++
++    SHGetPropertyStoreForWindowPtr funcGetProStore = nullptr;
++
++    HMODULE hDLL = ::LoadLibraryW(L"shell32.dll");
++
++    funcGetProStore = (SHGetPropertyStoreForWindowPtr)
++      GetProcAddress(hDLL, "SHGetPropertyStoreForWindow");
++
++    if (!funcGetProStore) 
++    {
++      // printf("-------- NULL [funcGetProStore] --------\n");
++      FreeLibrary(hDLL);
++      return;
++    }
++
++    // HWND toplevelHWND = ::GetAncestor(hwnd, GA_ROOT);
++
++    if (FAILED(funcGetProStore(hwnd, IID_PPV_ARGS(&pPropStore)))) 
++    {
++      // printf("-------- FAIL [funcGetProStore] --------\n");
++      FreeLibrary(hDLL);
++      return;
++    }
++
++    // 32CE38B2-2C9A-41B1-9BC5-B3784394AA44";
++    GUID id = { 0x32CE38B2, 0x2C9A, 0x41B1, { 0x9B, 0xC5, 0xB3, 0x78, 0x43, 0x94, 0xAA, 0x44 } };
++
++
++    DWORD pid = 2;
++
++    PROPERTYKEY pKey = { id, pid };
++
++    PROPVARIANT pv;
++
++    pv.vt = VT_BOOL;
++    pv.boolVal = fDisableTouch ? VARIANT_TRUE : VARIANT_FALSE;
++
++    if (pPropStore->SetValue(pKey, pv) != S_OK)
++    {
++      // printf("-------- FAIL [SetValue] --------\n");
++      pPropStore->Release();
++      FreeLibrary(hDLL);
++      return;
++    }
++
++    if (pPropStore->Commit() != S_OK)
++    {
++      // printf("-------- FAIL [Commit] --------\n");
++      pPropStore->Release();
++      FreeLibrary(hDLL);
++      return;
++    }
++
++    PropVariantClear(&pv);
++    pPropStore->Release();
++    FreeLibrary(hDLL);
++}
++
+ 
+ /**************************************************************
+  **************************************************************
+  **
+  ** BLOCK: nsIWidget impl.
+  **
+  ** nsIWidget interface implementation, broken down into
+  ** sections.
+@@ -619,16 +687,20 @@ nsWindow::Create(nsIWidget *aParent,
+ 
+   // Query for command button metric data for rendering the titlebar. We
+   // only do this once on the first window.
+   if (mWindowType == eWindowType_toplevel &&
+       (!nsUXThemeData::sTitlebarInfoPopulatedThemed ||
+        !nsUXThemeData::sTitlebarInfoPopulatedAero)) {
+     nsUXThemeData::UpdateTitlebarInfo(mWnd);
+   }
++
++  // SECURE BROWSER
++  if (mWindowType == eWindowType_toplevel) SetTouchDisableProperty(mWnd, true);
++
+   return NS_OK;
+ }
+ 
+ // Close this nsWindow
+ NS_METHOD nsWindow::Destroy()
+ {
+   // WM_DESTROY has already fired, avoid calling it twice
+   if (mOnDestroyCalled)
+@@ -5142,21 +5214,37 @@ nsWindow::ProcessMessage(UINT msg, WPARA
+     // events arrive.
+     case WM_ACTIVATE:
+       if (mWidgetListener) {
+         int32_t fActive = LOWORD(wParam);
+ 
+         if (WA_INACTIVE == fActive) {
+           // when minimizing a window, the deactivation and focus events will
+           // be fired in the reverse order. Instead, just deactivate right away.
++
+           if (HIWORD(wParam))
++          {
+             DispatchFocusToTopLevelWindow(false);
+-          else
++          }
++            else
++          {
+             sJustGotDeactivate = true;
+ 
++            bool permissive =Preferences::GetBool("bmakiosk.mode.permissive", false);
++
++            // SECURE BROWSER
++            if (!permissive)
++            {
++              nsCOMPtr<nsIObserverService> observerService = mozilla::services::GetObserverService();
++
++              if (observerService) observerService->NotifyObservers(nullptr, "sb-security-breach", nullptr);
++            }
++          }
++
++
+           if (mIsTopWidgetWindow)
+             mLastKeyboardLayout = KeyboardLayout::GetInstance()->GetLayout();
+ 
+         } else {
+           StopFlashing();
+ 
+           sJustGotActivate = true;
+           WidgetMouseEvent event(true, NS_MOUSE_ACTIVATE, this,
+diff -r 0cd2e9a8ba6f xpcom/base/nsConsoleService.cpp
+--- a/xpcom/base/nsConsoleService.cpp	Tue May 06 17:59:59 2014 -0400
++++ b/xpcom/base/nsConsoleService.cpp	Fri Jun 27 12:08:05 2014 -0600
+@@ -22,6 +22,9 @@
+ 
+ #include "mozilla/Preferences.h"
+ 
++// OPENKIOSK JS DEBUGGING
++#include "prenv.h"
++
+ #if defined(ANDROID)
+ #include <android/log.h>
+ #endif
+@@ -154,6 +157,13 @@
+ NS_IMETHODIMP
+ nsConsoleService::LogMessage(nsIConsoleMessage *message)
+ {
++    if (PR_GetEnv("OPENKIOSK_JAVASCRIPT_DEBUGGING"))
++    {
++      nsAutoString msg;
++      message->GetMessageMoz(getter_Copies(msg));
++      printf("%s\n", NS_ConvertUTF16toUTF8(msg).get());
++    }
++
+     return LogMessageWithMode(message, OutputToLog);
+ }
+ 
+@@ -250,6 +260,8 @@
+ NS_IMETHODIMP
+ nsConsoleService::LogStringMessage(const char16_t *message)
+ {
++    if (PR_GetEnv("OPENKIOSK_JAVASCRIPT_DEBUGGING")) printf("%s\n", NS_ConvertUTF16toUTF8(message).get());
++
+     if (!sLoggingEnabled) {
+         return NS_OK;
+     }
+diff -r 0cd2e9a8ba6f widget/cocoa/nsMenuBarX.h
+--- a/widget/cocoa/nsMenuBarX.h	Tue May 06 17:59:59 2014 -0400
++++ b/widget/cocoa/nsMenuBarX.h	Mon Jul 21 16:50:07 2014 -0600
+@@ -48,6 +48,7 @@
+   nsMenuBarX *mMenuBarOwner; // Weak -- if non-null it owns us
+   bool mDelayResignMainMenu;
+ }
++- (bool)isBrowser;
+ - (id)initWithTitle:(NSString *)aTitle andMenuBarOwner:(nsMenuBarX *)aMenuBarOwner;
+ - (void)resetMenuBarOwner;
+ - (bool)delayResignMainMenu;
+diff -r 0cd2e9a8ba6f widget/cocoa/nsMenuBarX.mm
+--- a/widget/cocoa/nsMenuBarX.mm	Tue May 06 17:59:59 2014 -0400
++++ b/widget/cocoa/nsMenuBarX.mm	Mon Jul 21 16:50:07 2014 -0600
+@@ -161,6 +161,9 @@
+ {
+   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
+ 
++  // if we are not running the Firefox UI, then don't draw any menubars
++  if (![mNativeMenu isBrowser]) return NS_OK;
++
+   // If we haven't created a global Application menu yet, do it.
+   if (!sApplicationMenu) {
+     nsresult rv = NS_OK; // avoid warning about rv being unused
+@@ -770,6 +773,22 @@
+ 
+ @implementation GeckoNSMenu
+ 
++- (bool)isBrowser
++{
++  NSArray * arguments = [[NSProcessInfo processInfo] arguments];
++
++  BOOL rv = NO;
++  for (NSString *arg in arguments)
++  {
++    // NSLog(@"ARGUMENT: [%@]", arg);
++
++    rv = ([arg rangeOfString:@"chrome://browser" options:NSCaseInsensitiveSearch].location != NSNotFound);
++    if (rv) break;
++  }
++
++  return rv;
++}
++
+ - (id)initWithTitle:(NSString *)aTitle
+ {
+   if (self = [super initWithTitle:aTitle]) {
+diff --git a/media/webrtc/trunk/webrtc/modules/audio_device/win/audio_device_core_win.cc b/media/webrtc/trunk/webrtc/modules/audio_device/win/audio_device_core_win.cc
+--- a/media/webrtc/trunk/webrtc/modules/audio_device/win/audio_device_core_win.cc
++++ b/media/webrtc/trunk/webrtc/modules/audio_device/win/audio_device_core_win.cc
+@@ -4765,20 +4765,49 @@ int32_t AudioDeviceWindowsCore::_GetDevi
+         // The returned value is not a wide null terminated string.
+         hr = E_UNEXPECTED;
+         WEBRTC_TRACE(kTraceError, kTraceAudioDevice, _id,
+             "IPropertyStore::GetValue returned unexpected type, hr = 0x%08X", hr);
+     }
+ 
+     if (SUCCEEDED(hr) && (varName.pwszVal != NULL))
+     {
++        WCHAR defaultName[MAX_PATH];
++        const int dBufferLen = sizeof(defaultName)/sizeof(defaultName)[0];
++        LPWSTR id = NULL;
++        bool match = false;
++
++        pDevice->GetId(&id);
++
++        IMMDevice *dDevice = NULL;
++        _GetDefaultDevice(eCapture, eConsole, &dDevice);
++
++        if (dDevice) 
++        {
++          LPWSTR did = NULL;
++          dDevice->GetId(&did);
++
++          if (wcscmp(id, did) == 0) 
++          {
++            wcsncpy_s(defaultName, dBufferLen, L"(default) ", 10);
++            wcscat_s(defaultName, MAX_PATH, varName.pwszVal);
++            match = true;
++          }
++
++          SAFE_RELEASE(dDevice);
++          CoTaskMemFree(did);
++        }
++
++        CoTaskMemFree(id);
++
+         // Copy the valid device name to the provided ouput buffer.
+-        wcsncpy_s(pszBuffer, bufferLen, varName.pwszVal, _TRUNCATE);
+-    }
+-    else
++        if (!match) wcsncpy_s(pszBuffer, bufferLen, varName.pwszVal, _TRUNCATE);
++        else wcsncpy_s(pszBuffer, bufferLen, defaultName, _TRUNCATE);
++    }
++      else
+     {
+         // Failed to find the device name.
+         wcsncpy_s(pszBuffer, bufferLen, szDefault, _TRUNCATE);
+     }
+ 
+     PropVariantClear(&varName);
+     SAFE_RELEASE(pProps);
+ 

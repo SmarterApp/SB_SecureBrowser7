@@ -1,0 +1,29 @@
+# This file specifies the build flags for Open Kiosk. 
+
+# for redistribution
+# WIN32_REDIST_DIR=$VCINSTALLDIR\\redist\\x86\\Microsoft.VC80.CRT
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../opt-oaks-debug-@CONFIG_GUESS@
+
+ac_add_options --enable-application=kiosk
+
+mk_add_options MOZ_PGO=1
+
+export BUILDING_RELEASE=1
+
+ac_add_options --disable-tests
+ac_add_options --disable-crashreporter
+
+export MOZ_DEBUG_SYMBOLS=1
+ac_add_options --enable-debugger-info-modules=yes
+ac_add_options --enable-debug
+
+ac_add_options --enable-release 
+ac_add_options --enable-update-channel=release 
+ac_add_options --enable-update-packaging 
+ac_add_options --enable-jemalloc 
+ac_add_options --with-google-api-keyfile=/c/builds/gapi.data 
+ac_add_options --enable-warnings-as-errors 
+ac_add_options --enable-official-branding
+
+

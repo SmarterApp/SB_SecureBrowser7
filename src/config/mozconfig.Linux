@@ -1,0 +1,33 @@
+# This file specifies the build flags for Kiosk.  
+
+mk_add_options MOZ_CO_PROJECT=browser
+
+mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/../opt-oaks-@CONFIG_GUESS@
+
+ac_add_options --enable-application=kiosk
+ac_add_options --enable-stdcxx-compat
+ac_add_options --enable-update-channel=release 
+ac_add_options --enable-update-packaging 
+ac_add_options --enable-official-branding
+
+# we need this in order to package up the distro
+ac_add_options --disable-elf-hack
+
+# ac_add_options --enable-optimize
+# ac_add_options --disable-debug
+# ac_add_options --disable-profilelocking
+# ac_add_options --disable-profilesharing
+# ac_add_options --disable-tests
+
+# ac_add_options --enable-debug
+# ac_add_options --enable-tests
+# ac_add_options --disable-optimize
+
+# export MOZ_DEBUG_SYMBOLS=1
+# ac_add_options --enable-debug-symbols="-gdwarf-2"
+
+# ac_add_options --disable-strip 
+# ac_add_options --disable-strip-libs
+
+# ac_add_options --disable-install-strip
+
