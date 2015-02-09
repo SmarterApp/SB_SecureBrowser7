@@ -63,10 +63,3 @@ Usage: ./build_securebrowser.sh homepage-url [-b branding-info]
 ### Linux 
 
 *Not available for Secure Browser 7.0.*
-
-#### TODO 
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
