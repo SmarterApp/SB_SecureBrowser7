@@ -23,7 +23,7 @@ The Secure Browser can be built for three platforms: Windows, Mac OS X, and Linu
 ### Windows 
 
 ####Prerequisites
-1. Install all prerequisites shown at https://developer.mozilla.org/en-US/docs/Mozilla/Developer_guide/Build_Instructions/Windows_Prerequisites. Once the MozillaBuild package is installed, you will have a `mozilla-build` directory under your C: drive.
+1. Install all prerequisites shown at the Firefox 29 prerequisites page (Firefox-windows-prereq.md) page. Once the MozillaBuild package is installed, you will have a `mozilla-build` directory under your C: drive.
 1. Windows SB7.0 is using Firefox version 29.0.1 which is not supported by Visual Studio 2013. Instead install Visual Studio 2010 Express packages shown at shown http://www.visualstudio.com/en-us/downloads/download-visual-studio-vs#DownloadFamilies_4 (in Visual Studio 2010 Express section)
 1. In addition to above prerequisites firefox SB build also requires windows SDK package and visual studio Service Pack 1
 1. Install makeMsi 12.206 from http://download.cnet.com/MAKEMSI/3000-2216_4-10468993.html,  from source code get `MakeMsi.zip` file, extract this zip file into C:\Program Files (will overwrite files in MakeMSI folder which has customization to SB build )
