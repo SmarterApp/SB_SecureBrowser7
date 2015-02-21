@@ -47,7 +47,7 @@ The Secure Browser can be built for three platforms: Windows, Mac OS X, and Linu
     * `alias 'make=mozmake'`
 
 1. By default mozilla-build installs under "C" directory. Run the file `start-shell-msvc2010.bat` under mozilla-build, this will launch an MSYS / BASH command prompt
-1. Go into the env directory in cloned securebrowser7 repository and run `./automate.sh` using this format
+1. Go into the env directory in cloned securebrowser7 repository and run `./automate.sh`
 1. Once build is successful run `mozmake msi` under `env/opt*/kiosk directory` to create file
 
 ### Mac OS X
