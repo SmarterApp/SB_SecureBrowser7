@@ -22,25 +22,34 @@ The Secure Browser can be built for three platforms: Windows, Mac OS X, and Linu
 
 ### Windows 
 
-####Prerequisites
-1. Install all prerequisites shown at the Firefox 29 prerequisites page (Firefox-windows-prereq.md) page. Once the MozillaBuild package is installed, you will have a `mozilla-build` directory under your C: drive.
-1. Windows SB7.0 is using Firefox version 29.0.1 which is not supported by Visual Studio 2013. Instead install Visual Studio 2010 Express packages shown at shown http://www.visualstudio.com/en-us/downloads/download-visual-studio-vs#DownloadFamilies_4 (in Visual Studio 2010 Express section)
-1. In addition to above prerequisites firefox SB build also requires windows SDK package and visual studio Service Pack 1
-1. Install makeMsi 12.206 from http://download.cnet.com/MAKEMSI/3000-2216_4-10468993.html,  from source code get `MakeMsi.zip` file, extract this zip file into C:\Program Files (will overwrite files in MakeMSI folder which has customization to SB build )
-1. Download Windows Driver Kit Version 7.1.0 from http://www.microsoft.com/en-us/download/details.aspx?id=11800 and extract ISO file under c directory. Follow the install instructions in install.htm.
+#### Prerequisites
+1. Install all prerequisites shown at the Firefox 29 prerequisites page (Firefox-windows-prereq.md) page at the top level of this repository. Once the MozillaBuild package is installed, you will have a `mozilla-build` directory under your C: drive. A few important notes:
 
-####Build Process
+    * Windows SB7.0 uses Firefox version 29.0.1 which is not supported by Visual Studio 2013. Be sure to install [Visual Studio 2010 Express packages](http://www.visualstudio.com/en-us/downloads/download-visual-studio-vs#DownloadFamilies_4) (see *Visual Studio 2010 Express* section)
+    * Windows SB7.0 build also requires Windows SDK package, and Visual Studio Service Pack 1
+
+2. Install [MakeMsi 12.206](http://download.cnet.com/MAKEMSI/3000-2216_4-10468993.html). From source code get `MakeMsi.zip` file, extract this zip file into C:\Program Files (will overwrite files in MakeMSI folder which has customization to SB build)
+3. Download [Windows Driver Kit Version 7.1.0](http://www.microsoft.com/en-us/download/details.aspx?id=11800) and extract ISO file under c directory. Follow the install instructions in `install.htm`.
+
+#### Build Process
 1. Clone this securebrowser7 repository to your local workspace
 1. Clone Mozilla Firefox 29 to a directory at same level as securebrowser7 `$ hg clone -r FIREFOX_29_0_1_RELEASE http://hg.mozilla.org/releases/mozilla-release/ mozilla`
 1. Generate a v4 GUID (https://www.uuidgenerator.net/version4) and place into `/src/branding/SBACSecureBrowser/uuid.txt` (only for a single custom build, not for every version. Don't forget to verify that all letters in UUID should be capital)
 1. This windows SB build requires four dll packages including `msvcirt.dll`, `msvcp71.dll`, `msvcr71.dll` and `msvcrt.dll`. These packages are freely available online, download and place them under `env/mozilla/kiosk/redist/`
-1. Obtain the URL of the TDS Student home page for the browser. encode home page url and replace at `// SBAC PRODUCTION URL` in `/src/branding/SBACSecureBrowser/pref/kiosk-branding.js` (Ex: pref("bmakiosk.startup.homepage", "oiqoesqnkhHM6Ly9sb2dpbutgyutiwioiqduovdWQxLnRkcy5haXJhc3Qub3JnL3N0dWRlbnQvPiuoijxn0JBQw==");)
+1. Obtain the URL of the TDS Student home page for the browser. encode home page url and replace at `// SBAC PRODUCTION URL` in `/src/branding/SBACSecureBrowser/pref/kiosk-branding.js`
+
+    * Example: pref("bmakiosk.startup.homepage", "oiqoesqnkhHM6Ly9sb2dpbutgyutiwioiqduovdWQxLnRkcy5haXJhc3Qub3JnL3N0dWRlbnQvPiuoijxn0JBQw==");)
+
 1. Replace `start-shell-msvc2010.bat` file under `/c/mozilla-build` with `start-shell-msvc2010` file in SB7.0 repo. It has paths referenced to ATL files
-1. Add following path and alias variables to .profile file and source the file ( `PATH=/c/Program\ Files/MakeMsi/:/c/mozilla-build/mozmake:$PATH`
-    `alias 'make=mozmake'` )
+1. Add the following path and alias variables to a `.profile` file and source the file
+
+    * `PATH=/c/Program\ Files/MakeMsi/:/c/mozilla-build/mozmake:$PATH`
+    * `alias 'make=mozmake'`
+
 1. By default mozilla-build installs under "C" directory. Run the file `start-shell-msvc2010.bat` under mozilla-build, this will launch an MSYS / BASH command prompt
 1. Go into the env directory in cloned securebrowser7 repository and run `./automate.sh` using this format
 1. Once build is successful run `mozmake msi` under `env/opt*/kiosk directory` to create file
+
 ### Mac OS X
 
 1. Clone this securebrowser7 repository to your local workspace.
