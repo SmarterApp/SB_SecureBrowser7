@@ -13,7 +13,7 @@ We would be happy to receive feedback on its capabilities, problems, or future e
 
 ## Configuration ###
 
-The Secure Browser can be built for three platforms: Windows, Mac OS X, and Linux. Each build follows a similar process, as described below. From a high-level perspective, building a custom secure browser involves:
+The Secure Browser can be built for three platforms: Windows, Mac OS X, and Linux (although the Linux version of 7.0 is not available; see [SB6.5](https://bitbucket.org/sbacoss/securebrowser65_release) for details). Each build follows a similar process, as described below. From a high-level perspective, building a custom secure browser involves:
 
 * Cloning the Mozilla Firefox source
 * Cloning this SecureBrowser project
@@ -71,4 +71,4 @@ Usage: ./build_securebrowser.sh homepage-url [-b branding-info]
 
 ### Linux 
 
-*Not available for Secure Browser 7.0. Please refer to the securebrowser65 repository.*
+*Not available for Secure Browser 7.0. Please refer to the [secure browser 6.5](https://bitbucket.org/sbacoss/securebrowser65_release) repository.*
