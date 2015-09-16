@@ -7,7 +7,7 @@ This project is licensed under the [Mozilla open source license v.2.0](https://w
 ## Getting Involved ##
 We would be happy to receive feedback on its capabilities, problems, or future enhancements:
 
-* For general questions or discussions, please use the [Forum](http://forum.opentestsystem.org/viewforum.php?f=17).
+* For general questions or discussions, please use the [Forum](http://forum.smarterbalanced.org/viewforum.php?f=17).
 * Feel free to **Fork** this project and develop your changes!
 
 ## Configuration ###
