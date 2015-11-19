@@ -62,22 +62,42 @@ All commands should be executed in the batch file named as **start-shell-msvc201
 
 ### Mac OS X
 
-1. Clone this securebrowser7 repository to your local workspace.
-1. Clone Mozilla Firefox 29 to a directory at same level as securebrowser7
-`$ hg clone -r FIREFOX_29_0_1_RELEASE http://hg.mozilla.org/releases/mozilla-release/ mozilla`
-1. Install all prerequisites such as Xcode, shown at https://developer.mozilla.org/en-US/docs/Mozilla/Developer_guide/Build_Instructions/Mac_OS_X_Prerequisites 
-1. Install homebrew via http://brew.sh or install MacPorts.
-1. Generate a v4 GUID (https://www.uuidgenerator.net/version4) and place into `/src/branding/SBACSecureBrowser/uuid.txt` (only for a single custom build, not for every version)
-1. Obtain the URL of the TDS Student home page for the browser.
-1. Go into the `env` directory and run `./build_securebrowser.sh` using this format
-
+1.	Download and install XCode that is compatible to your mac version from URL: [Apple](https://developer.apple.com/downloads/) (For this you need an Apple ID). It may take an hour or so.
+2.	Download and install Command Line Tools as well from same URL: [Apple](https://developer.apple.com/downloads/).
+3.	Move XCode to applications using command `sudo xcode-select -switch /Applications/Xcode.app`.
+4.	Install all the build prerequisites for OS X by running following command in terminal: 
+`curl https://hg.mozilla.org/mozilla-central/raw-file/default/python/mozboot/bin/bootstrap.py > bootstrap.py && python bootstrap.py`
+(**Note:** Your account will need administrator permission to succeed; you can verify that you have this permission in System Preferences -> Users & Groups)
+5.	During execution of above command it will ask you to choose the version of Firefox (Desktop or Android); choose Desktop. It will also ask you to choose a package manager (Homebrew or MACPorts); Choose Homebrew. 
+(**Note:** After executing this command, if it asks you to create a file called `~/.bash_profile`, create it and add the string `export PATH=/usr/local/bin:$PATH` into it).
+6.	Install required dependencies using command `brew install yasm mercurial gawk ccache python`.
+7.	Install autoconf213 using command `brew install https://raw.github.com/Homebrew/homebrew-versions/master/autoconf213.rb`.	
+8.	Get the Mozilla Source Code using following command: `hg clone https://hg.mozilla.org/mozilla-central/ mozilla-central`.
+9.	Clone the Secure Browser 7 to a directory at the same level as mozilla-central: `hg clone https://bitbucket.org/sbacoss/securebrowser7_release`.
+10.	Clone Mozilla Firefox 29 to a directory at same level as secure browser7: `hg clone -r FIREFOX_29_0_1_RELEASE http://hg.mozilla.org/releases/mozilla-release/ Mozilla`.
+11.	Create a file called **.mozconfig** under  **mozilla-central**  directory and add following content to it:
+(1) Define where build files should go. This places them in the directory `obj-ff-dbg` under the current source directory: `mk_add_options MOZ_OBJDIR=@TOPSRCDIR@/obj-ff-dbg`. (2) use `-s` makes builds quieter by default. (3) use `-j4` allows 4 tasks to run in parallel. Set the number equal to the number of cores in your machine, for example 4: `mk_add_options MOZ_MAKE_FLAGS="-s -j4`. (4) Enable debug builds: `ac_add_options --enable-debug`
+12.	 Check the SDK version (Path:`Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs`) and add that version and its path to **.mozconfig** file.
+`ac_add_options --with-macos-sdk=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.8.sdk`.
+13.	Also add autoconf213 installation path 
+`mk_add_options AUTOCONF=/usr/local/Cellar/autoconf213/2.13/bin/autoconf213`.
+14.	Update the Mac SDK version in the following file at line 97: `securebrowser7_release/env/ kiosk-client.mk`.
+15.	Run the following command twice to ensure mercurial is up to date: `./mach mercurial-setup`.
+16.	Generate a v4 GUID [UUID generator](https://www.uuidgenerator.net/version4) and place into `securebrowser7_release/src/branding/SBACSecureBrowser/uuid.txt` (**Note:** Only for a single custom build, not for every version. Don't forget to verify that all letters in UUID are capital).
+17.	Obtain the URL of the TDS Student home page for the browser.
+18.	Go into the `securebrowser7_release/env directory` and run `./build_securebrowser.sh` using this format
 
 ```
 Usage: ./build_securebrowser.sh homepage-url [-b branding-info]
        homepage-url   The URL which the secure browser will open when started. If none is provided, a default test URL will be used (not recommended).
     -b branding-info  OPTIONAL: These parameters will be passed directly into the automate.sh script
 
+EX: `./build_securebrowser.sh https://google.com`
+
 ```
+This process may take around 2 hours. Once the build is successful, it will generate a setup file (.dmg) in `securebrowser7_release/env/Release/`. Go there and install **SBACSecurebrowser7.0.dmg**.
+
+ **Please refer to [Mozilla Foundation](https://developer.mozilla.org/en-US/docs/Mozilla/Developer_guide/Build_Instructions/Mac_OS_X_Prerequisites) for additional information**.
 
 ### Linux 
 
