@@ -62,6 +62,10 @@ All commands should be executed in the batch file named as **start-shell-msvc201
 
 ### Mac OS X
 
+```
+NOTE: These instructions have been verified to work with Mac OS X 10.8 and XCode 5.0.4.
+There is a known incompatibility between Firefox 29 and the version of clang used in Xcode versions compatible with OS X 10.9 and above.
+```
 1.	Download and install XCode that is compatible to your mac version from URL: [Apple](https://developer.apple.com/downloads/) (For this you need an Apple ID). It may take an hour or so.
 2.	Download and install Command Line Tools as well from same URL: [Apple](https://developer.apple.com/downloads/).
 3.	Move XCode to applications using command `sudo xcode-select -switch /Applications/Xcode.app`.
